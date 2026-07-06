@@ -73,15 +73,19 @@ def apply_rope_backward(dq_rot, dk_rot, cos, sin, offset=0):
 # -----------------------------------------------------------------------------
 # FlashAttention (block-level, online softmax, deterministic dropout)
 # -----------------------------------------------------------------------------
-def _dropout_hash(b, h, i, j, p):
-    """Deterministic dropout mask based on indices (avoids storing full mask)."""
-    # Mix bits using large primes to get pseudo-random uniform(0,1)
-    z = (np.uint32(b * 0x9E3779B1) ^
-         np.uint32(h * 0x85EBCA77) ^
-         np.uint32(i * 0xC2B2AE35) ^
-         np.uint32(j * 0x27D4EB2F))
+def _dropout_hash(B, H, S, j_start, j_end, p):
+    """Vectorized deterministic dropout mask based on indices (avoids storing full mask)."""
+    b_idx = np.arange(B)[:, None, None, None]
+    h_idx = np.arange(H)[None, :, None, None]
+    i_idx = np.arange(S)[None, None, :, None]
+    j_idx = np.arange(j_start, j_end)[None, None, None, :]
+    
+    z = ( (b_idx * 0x9E3779B1).astype(np.uint32) ^
+          (h_idx * 0x85EBCA77).astype(np.uint32) ^
+          (i_idx * 0xC2B2AE35).astype(np.uint32) ^
+          (j_idx * 0x27D4EB2F).astype(np.uint32) )
     val = (z % 10007).astype(np.float64) / 10007.0
-    return val > p
+    return np.where(val > p, 1.0 / (1.0 - p), 0.0)
 
 
 def flash_attention_forward(Q, K, V, mask=None, dropout=0.0, training=False):
@@ -124,17 +128,7 @@ def flash_attention_forward(Q, K, V, mask=None, dropout=0.0, training=False):
 
         # Dropout on attention probabilities (deterministic hash)
         if training and dropout > 0.0:
-            # generate mask for each element using hash function
-            mask_drop = np.ones_like(P, dtype=np.float64)
-            for b in range(B):
-                for h in range(H):
-                    for i in range(S):
-                        for j_local in range(j_end - j_start):
-                            j_abs = j_start + j_local
-                            if _dropout_hash(b, h, i, j_abs, dropout):
-                                mask_drop[b, h, i, j_local] = 1.0 / (1.0 - dropout)
-                            else:
-                                mask_drop[b, h, i, j_local] = 0.0
+            mask_drop = _dropout_hash(B, H, S, j_start, j_end, dropout)
             P = P * mask_drop
 
         # Update running sum and output
@@ -188,16 +182,7 @@ def flash_attention_backward(dO, flash_cache):
 
         # Re-apply dropout mask exactly as in forward
         if training and dropout > 0.0:
-            mask_drop = np.ones_like(P, dtype=np.float64)
-            for b in range(B):
-                for h in range(H):
-                    for i in range(S):
-                        for j_local in range(j_end - j_start):
-                            j_abs = j_start + j_local
-                            if _dropout_hash(b, h, i, j_abs, dropout):
-                                mask_drop[b, h, i, j_local] = 1.0 / (1.0 - dropout)
-                            else:
-                                mask_drop[b, h, i, j_local] = 0.0
+            mask_drop = _dropout_hash(B, H, S, j_start, j_end, dropout)
             P = P * mask_drop
 
         # Gradients from output

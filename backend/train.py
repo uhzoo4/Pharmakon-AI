@@ -11,20 +11,22 @@ from backend.transformer import PharmakonTransformer
 # Optimizer: AdamW with decoupled weight decay
 # -----------------------------------------------------------------------------
 class AdamW:
-    def __init__(self, params_grads, lr=3e-4, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01):
-        self.params_grads = params_grads  # list of (param, grad) tuples
+    def __init__(self, model, lr=3e-4, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01):
+        self.model = model
         self.lr = lr
         self.beta1, self.beta2 = betas
         self.eps = eps
         self.weight_decay = weight_decay
         self.t = 0
-        # Initialize momentum and velocity buffers
+        # Fetch parameter shapes to initialize momentum and velocity buffers
+        params_grads = model.get_params_and_grads()
         self.m = [np.zeros_like(p) for p, _ in params_grads]
         self.v = [np.zeros_like(p) for p, _ in params_grads]
 
     def step(self):
         self.t += 1
-        for i, (param, grad) in enumerate(self.params_grads):
+        params_grads = self.model.get_params_and_grads()
+        for i, (param, grad) in enumerate(params_grads):
             # Decoupled weight decay: param = param - lr * weight_decay * param
             param *= (1 - self.lr * self.weight_decay)
             # Adam update
@@ -35,8 +37,9 @@ class AdamW:
             param -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
     def zero_grad(self):
-        for _, grad in self.params_grads:
-            grad.fill(0.0)
+        for _, grad in self.model.get_params_and_grads():
+            if grad is not None:
+                grad.fill(0.0)
 
 
 # -----------------------------------------------------------------------------
@@ -92,9 +95,8 @@ def train(model, data, char_to_idx, epochs=50, batch_size=32, seq_len=64,
     total_batches = (len(encoded) // (batch_size * seq_len)) * epochs
     steps_per_epoch = len(encoded) // (batch_size * seq_len)
 
-    # Collect parameter/gradient pairs
-    params_grads = model.get_params_and_grads()
-    optimizer = AdamW(params_grads, lr=lr, weight_decay=weight_decay)
+    # Initialize optimizer with model references
+    optimizer = AdamW(model, lr=lr, weight_decay=weight_decay)
     scheduler = CosineDecayWithWarmup(optimizer, warmup_steps, total_batches)
 
     print(f"Training {epochs} epochs, {steps_per_epoch} batches/epoch, total steps {total_batches}")
@@ -130,6 +132,7 @@ def train(model, data, char_to_idx, epochs=50, batch_size=32, seq_len=64,
             model.backward(d_logits, caches)
 
             # Gradient clipping (global L2 norm)
+            params_grads = model.get_params_and_grads()
             total_norm = 0.0
             for _, grad in params_grads:
                 total_norm += np.sum(grad ** 2)
