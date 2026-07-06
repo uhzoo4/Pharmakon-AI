@@ -13,6 +13,13 @@ This engine handles next-character selection from logits returned by the model.
 
 ---
 
+## No Content Moderation Layer
+The sampler (`backend/generate.py`) is purely a statistical engine.  
+- There is no hidden profanity filter, sentiment check, or output censorship.  
+- The only active blacklist is the user’s character blacklist passed in the API request; if the blacklist is empty, the output is completely unfiltered.  
+- The collision-recovery fallback must never introduce content-based intervention.
+
+---
 ### 🏛️ CORE DESIGN CONSTRAINTS
 1. **Temperature Guardrails:**
    - At very low temperatures ($T \le 0.05$), standard division ($logits / T$) causes mathematical overflow or collapses probabilities into a single point.

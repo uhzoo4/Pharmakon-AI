@@ -15,6 +15,12 @@ The name **Pharmakon (φάρμακον)** represents the dualistic philosophy of
 * **The Poison:** It exposes raw language generation, mimicking human existential dread, absurdity, and doom. It runs locally, consuming CPU cycles, and demands manual mathematical execution (raw backpropagation) from the developer.
 * **The Remedy:** It acts as an artistic grimoire for writers, students, and thinkers, offering creative prompts, stylistic inspiration, and complete transparency into AI operations with zero cloud dependencies or telemetry tracking.
 
+## 1.1 Full Artistic Fidelity – No Censorship
+Pharmakon is a fully unrestricted, uncensored text generation system.  
+- It contains no keyword filters, no toxicity classifiers, and no ethical-alignment post-processing.  
+- The model reproduces the full stylistic and thematic spectrum of its training corpus, including the dark, violent, or psychologically intense content present in classic existentialist and Gothic literature.  
+- The user-facing character blacklist is a poetic constraint (lipogram), not a safety mechanism. All semantic filtering is the responsibility of the human operator, never the software.
+
 ---
 
 ## 2. Literary Personality Profiles

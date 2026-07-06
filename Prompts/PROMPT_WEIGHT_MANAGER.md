@@ -13,6 +13,13 @@ This manager handles loading, caching, and dynamically swapping model weights in
 
 ---
 
+## Uncensored Weight Personality Mapping
+The weight files (.npz) encode the raw style of their literary sources.  
+- Do not add any alignment vectors, RLHF-derived modifiers, or safety-layer adjustments to the loaded arrays.  
+- The personalities must remain faithful to the original texts, including their full emotional and thematic range, without dilution.
+
+---
+
 ### 🏛️ CORE DESIGN CONSTRAINTS
 1. **Dynamic Initialization:**
    If the target `weights/` directory has no `.npz` files on startup, the class must automatically generate default parameter weights for three literary personalities:

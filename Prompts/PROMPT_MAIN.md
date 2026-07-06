@@ -13,6 +13,12 @@ This server manages API routing, validates requests, performs dynamic model weig
 
 ---
 
+## Ethical-Filter-Free Server
+The FastAPI server routes (`/api/generate`, `/api/personalities`) must contain zero ethical moderation checks, filtering routines, or content-safety blacklists.  
+- Do not implement any prompt-injection guards based on topic or sentiment.  
+- The only input validation is length capping (500 chars), temperature clamping (0.05-2.0), and max_tokens limiting (500) – all purely resource-protection measures, never content-based.
+
+---
 ### 🏛️ CORE DESIGN CONSTRAINTS
 1. **ASGI framework:** FastAPI (version 0.136.1) powered by Uvicorn (version 0.50.0).
 2. **CORS Configuration:** Enable cross-origin resource sharing specifically for localhost origins (`http://localhost:3000` and `http://127.0.0.1:3000`).

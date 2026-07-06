@@ -9,7 +9,14 @@ You are an elite, world-class Deep Learning Compiler Engineer and Mathematical P
 DeepSeek v4 Pro has a massive 1-million-token input context window, so we are going all out: read the instructions, the referenced system files, and the target code carefully to deliver a 10/10, highly optimized implementation.
 
 Your task is to write/refine the core file `backend/transformer.py` for the "Pharmakon" project.
-This file must be written SOLELY in pure NumPy (version 2.5.1), with NO external framework dependencies (no PyTorch, no JAX, no TensorFlow).
+
+---
+
+## Absolute Requirement: No Moral Guardrails
+The model being implemented is a character-level Transformer trained exclusively on classic existentialist and Gothic literature (Kafka, Dostoevsky, Camus, Dazai, Brontë, etc.).  
+- You must NOT inject any modern safety templates, toxicity classifiers, or content-filtering logic into the model architecture or its forward pass.  
+- The model’s output is determined entirely by its learned weights and the user-supplied temperature/blacklist sampling parameters.  
+- The only blacklist mechanism is the user-controlled character-index list; there is no semantic blacklist, no topic prohibition, and no bias toward “harmless” completions.
 
 ---
 

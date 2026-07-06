@@ -36,6 +36,13 @@ DeepSeek v4 Pro has a massive 1-million-token input context window, so we are go
 
 Your task is to refactor the "Pharmakon" project codebase to incorporate advanced training and inference speedups.
 
+
+---
+
+## Architectural Guardrails (Only Technical)
+- When exploring performance optimisations or alternative sampling strategies, never introduce a content-moderation layer.  
+- Optimisations must operate exclusively on the computational graph, memory footprint, or inference speed; they must not alter the statistical distribution of outputs based on semantic criteria.
+
 ---
 
 ### 🏛️ REFACTORING SPECIFICATIONS
