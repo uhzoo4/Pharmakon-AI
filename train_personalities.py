@@ -46,11 +46,11 @@ def run_pipeline(epochs=20, batch_size=32, seq_len=64, lr=3e-4, use_checkpoint=T
             with open(file_path, "r", encoding="utf-8") as f:
                 text_content = f.read()
         except Exception as exc:
-            print(f"⚠ Failed to read {file_path}: {exc}")
+            print(f"  [WARNING] Failed to read {file_path}: {exc}")
             continue
 
         if len(text_content) < seq_len + 2:
-            print(f"⚠ Text file '{file_path.name}' is too small (must be at least {seq_len + 2} chars). Skipping.")
+            print(f"  [WARNING] Text file '{file_path.name}' is too small (must be at least {seq_len + 2} chars). Skipping.")
             continue
 
         print(f"Loaded {len(text_content):,} characters of training corpus.")
@@ -77,9 +77,9 @@ def run_pipeline(epochs=20, batch_size=32, seq_len=64, lr=3e-4, use_checkpoint=T
                 for key in weights_dict:
                     weights_dict[key] = weights_dict[key].astype(np.float64)
                 model.load_weights(weights_dict)
-                print("  ✓ Loaded weights successfully.")
+                print("  [OK] Loaded weights successfully.")
             except Exception as exc:
-                print(f"  ⚠ Failed to load existing weights (will train from scratch): {exc}")
+                print(f"  [WARNING] Failed to load existing weights (will train from scratch): {exc}")
         else:
             print(f"No existing weights found for '{name}'. Training from scratch...")
 
@@ -99,7 +99,7 @@ def run_pipeline(epochs=20, batch_size=32, seq_len=64, lr=3e-4, use_checkpoint=T
                 use_checkpoint=use_checkpoint
             )
         except Exception as exc:
-            print(f"⚠ Training crashed: {exc}")
+            print(f"  [WARNING] Training crashed: {exc}")
             continue
 
         # 5. Extract trained parameters and save back to directory
@@ -128,9 +128,9 @@ def run_pipeline(epochs=20, batch_size=32, seq_len=64, lr=3e-4, use_checkpoint=T
                 params_dict[prefix + "b2"] = block.b2.astype(np.float32)
 
             np.savez_compressed(npz_path, **params_dict)
-            print(f"  ✓ Saved '{name}' parameters successfully.")
+            print(f"  [OK] Saved '{name}' parameters successfully.")
         except Exception as exc:
-            print(f"  ⚠ Failed to save weights to file: {exc}")
+            print(f"  [WARNING] Failed to save weights to file: {exc}")
 
     print("\nTraining run complete.")
 

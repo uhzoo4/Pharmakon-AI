@@ -26,7 +26,7 @@ class WeightManager:
 
     def __init__(
         self,
-        weights_dir: str = "weights",
+        weights_dir: str | Path = "weights",
         vocab_size: int = 97,
         embed_dim: int = 64,
         num_heads: int = 4,
@@ -68,8 +68,8 @@ class WeightManager:
         for name in default_personalities:
             weights = self._generate_xavier_weights()
             save_path = self.weights_dir / f"{name}.npz"
-            np.savez_compressed(save_path, **weights)
-            print(f"  ✓ Initialized default weights: {save_path}")
+            np.savez_compressed(save_path, **weights)  # type: ignore[arg-type]
+            print(f"  [OK] Initialized default weights: {save_path}")
 
     def _generate_xavier_weights(self) -> Dict[str, np.ndarray]:
         """Generate a full set of model parameters using Xavier uniform
@@ -133,7 +133,7 @@ class WeightManager:
                 self.personalities[name] = dict(np.load(npz_path))
                 print(f"  Loaded personality '{name}' ({len(self.personalities[name])} tensors).")
             except Exception as exc:
-                print(f"  ⚠ Failed to load {npz_path}: {exc}")
+                print(f"  [WARNING] Failed to load {npz_path}: {exc}")
 
     def get_weights(self, personality: str) -> Dict[str, np.ndarray]:
         """Return the weight dictionary for the requested personality.

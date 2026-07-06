@@ -5,7 +5,7 @@ Uses the refactored transformer with FlashAttention.
 
 import numpy as np
 import time
-from backend.transformer import PharmakonTransformer
+from transformer import PharmakonTransformer
 
 # -----------------------------------------------------------------------------
 # Optimizer: AdamW with decoupled weight decay

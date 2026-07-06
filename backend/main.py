@@ -122,6 +122,7 @@ async def generate_text(req: GenerateRequest, request: Request):
 
                 try:
                     logits = model.forward(idx_arr)
+                    assert isinstance(logits, np.ndarray)
                 except Exception as e:
                     yield f"data: {json.dumps({'error': f'Inference crash: {str(e)}'})}\n\n"
                     break

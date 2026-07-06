@@ -550,10 +550,11 @@ class PharmakonTransformer:
 
         block_caches = []
         new_kv_caches = [] if use_cache else None
+        ln_final_cache = None
 
         for i, block in enumerate(self.blocks):
             kv_cache = kv_caches[i] if kv_caches is not None else None
-            if use_cache:
+            if use_cache and new_kv_caches is not None:
                 x, new_kv = block.forward(x, training=False, use_cache=True, kv_cache=kv_cache)
                 new_kv_caches.append(new_kv)
             else:

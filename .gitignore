@@ -7,3 +7,5 @@ weights/*.npz
 Prompts/
 docs/
 data/*.txt
+backend/weights/
+.vscode/

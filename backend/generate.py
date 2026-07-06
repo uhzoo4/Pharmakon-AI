@@ -59,5 +59,5 @@ class Sampler:
 
         # 5. Renormalize and sample stochastically
         probs /= total
-        return int(np.random.choice(len(probs), p=probs))
+        return int(np.random.choice(np.arange(len(probs)), p=probs))
         
