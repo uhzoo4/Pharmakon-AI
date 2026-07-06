@@ -6,3 +6,4 @@ venv/
 weights/*.npz
 Prompts/
 docs/
+data/*.txt
