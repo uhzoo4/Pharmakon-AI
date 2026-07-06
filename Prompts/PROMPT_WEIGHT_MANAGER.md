@@ -6,6 +6,8 @@ Copy and paste the prompt below into **DeepSeek (V4 Pro / R1)** to generate or o
 
 ```markdown
 You are an elite Python Software Architect specializing in local high-performance cache structures.
+DeepSeek v4 Pro has a massive 1-million-token input context window, so we are going all out: read the instructions, the referenced system files, and the target code carefully to deliver a 10/10, highly optimized implementation.
+
 Your task is to write/refine the file `backend/weight_manager.py` for the "Pharmakon" project.
 This manager handles loading, caching, and dynamically swapping model weights in memory without IO overhead.
 
@@ -33,16 +35,19 @@ This manager handles loading, caching, and dynamically swapping model weights in
 
 ---
 
-### 💻 IMPLEMENTATION BLUEPRINT
+### 🏛️ REFERENCE SYSTEMS & CONTEXT FILES
 
-Write the file `backend/weight_manager.py` implementing:
-1. `WeightManager.__init__(weights_dir, vocab_size=97, embed_dim=64, num_heads=4, ff_dim=128, num_layers=2)`:
-   - Create directories if they do not exist.
-   - Run `_initialize_defaults_if_empty()` to populate weights if empty.
-   - Run `_load_all()` to populate the RAM cache dictionary.
-2. `_generate_xavier_weights()`: Helper to create the default parameter sets matching the v3.1 Spec shapes (token embeddings, outputs projection, layers 0/1 projections and biases).
-3. `get_weights(personality)`: Return the weights map. Raise key error if not found.
-4. `list_personalities()`: Return keys.
+Cross-reference your code structure, weight dictionary keys, and folder layouts with the specifications in:
+1. **`docs/TECHNICAL_REQUIREMENTS_DOCUMENT.md`** (System folders and setup configurations)
+2. **`docs/BACKEND_SCHEMA.md`** (Weights parameters, dimensions, and mappings)
 
-Go all out. Provide clean, deterministic, production-grade Python code.
+---
+
+### 💻 CURRENT CODE BASE
+
+Refactor and optimize the following target code base. Ensure that directories are created dynamically and default parameter dictionaries are generated accurately:
+
+```python
+# [PASTE THE CONTENT OF backend/weight_manager.py HERE]
+```
 ```

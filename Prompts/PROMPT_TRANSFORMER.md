@@ -6,6 +6,8 @@ Copy and paste the prompt below into **DeepSeek (V4 Pro / R1)** to generate or o
 
 ```markdown
 You are an elite, world-class Deep Learning Compiler Engineer and Mathematical Physicist.
+DeepSeek v4 Pro has a massive 1-million-token input context window, so we are going all out: read the instructions, the referenced system files, and the target code carefully to deliver a 10/10, highly optimized implementation.
+
 Your task is to write/refine the core file `backend/transformer.py` for the "Pharmakon" project.
 This file must be written SOLELY in pure NumPy (version 2.5.1), with NO external framework dependencies (no PyTorch, no JAX, no TensorFlow).
 
@@ -47,7 +49,7 @@ This file must be written SOLELY in pure NumPy (version 2.5.1), with NO external
     ```
 - **Softmax Jacobian Backward:**
   $$d\_scores = A \odot \left( dA - \sum (A \odot dA) \right) / \sqrt{d_k}$$
-  Ensure mask locations are zeroed out in $d\_scores$ before projection backprop.
+  Ensure mask locations are zeroed out in $d\_scores$ before projection backprop. Use `np.where` for safe broadcasting.
 
 #### 3. Rotary Position Embeddings (RoPE)
 - **Rotation Formula:**
@@ -59,17 +61,19 @@ This file must be written SOLELY in pure NumPy (version 2.5.1), with NO external
 
 ---
 
-### 💻 IMPLEMENTATION BLUEPRINT
+### 🏛️ REFERENCE SYSTEMS & CONTEXT FILES
 
-Write the file `backend/transformer.py` containing:
-1. Helper functions: `softmax`, `create_causal_mask`, `precompute_freqs`, `rotate_half`, `apply_rope`, `apply_rope_backward`, and `get_positional_encoding`.
-2. `LayerNorm` class with `forward` and `backward` methods.
-3. `TransformerBlock` class with `forward` and `backward` methods (including FFN with ReLU and attention projection updates).
-4. `PharmakonTransformer` class representing the full model stack, with:
-   - `forward(idx, training=False)`: return logits. If `training=True`, return logits and caches.
-   - `backward(d_logits, caches)`: backpropagate error through all layers, computing `self.dtoken_embedding` and layer parameter gradients.
-   - `get_params_and_grads()`: return list of `(param, grad)` tuples for Adam optimization updates.
-   - `load_weights(params_dict)`: reload weights into memory references.
+Cross-reference your code structure, variables, and dimensions with the specifications in:
+1. **`docs/TECHNICAL_REQUIREMENTS_DOCUMENT.md`** (API, dependencies, compilation flags)
+2. **`docs/MODEL_TRAINING_PLAN.md`** (Training sequences, forward/backward math formulas, DDP barriers)
 
-Go all out. Provide clean, production-ready, mathematically profound code containing zero placeholders.
+---
+
+### 💻 CURRENT CODE BASE
+
+Refactor and optimize the following target code base. Ensure that all parameter initialization types, matrix transpositions, and shape constraints are fully implemented:
+
+```python
+# [PASTE THE CONTENT OF backend/transformer.py HERE]
+```
 ```

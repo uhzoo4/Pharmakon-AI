@@ -32,6 +32,8 @@ Copy and paste the prompt below into **DeepSeek (V4 Pro / R1)** when you are rea
 
 ```markdown
 You are an elite AI Compiler Engineer specializing in high-performance Tensor architectures and memory-efficient deep learning optimizers.
+DeepSeek v4 Pro has a massive 1-million-token input context window, so we are going all out: read the instructions, the referenced system files, and the target code carefully to deliver a 10/10, highly optimized implementation.
+
 Your task is to refactor the "Pharmakon" project codebase to incorporate advanced training and inference speedups.
 
 ---
@@ -63,4 +65,21 @@ Your task is to refactor the "Pharmakon" project codebase to incorporate advance
 - Configure a learning rate scheduler with warm-up steps followed by cosine learning rate decay.
 
 Ensure all modifications are written in pure NumPy (version 2.5.1) and use 64-bit precision (`np.float64`).
+
+---
+
+### 🏛️ REFERENCE SYSTEMS & CONTEXT FILES
+
+Cross-reference your optimization architectures and equations with the specifications in:
+1. **`docs/MODEL_TRAINING_PLAN.md`** (DDP barrier structures and optimization formulas)
+
+---
+
+### 💻 CURRENT CODE BASE
+
+Paste your current backend code arrays here to run refactoring passes:
+
+```python
+# [PASTE CURRENT backend/transformer.py CONTENT HERE]
+```
 ```

@@ -6,6 +6,8 @@ Copy and paste the prompt below into **DeepSeek (V4 Pro / R1)** to generate or o
 
 ```markdown
 You are an expert NLP Engineer specializing in sampling mechanics for autoregressive language models.
+DeepSeek v4 Pro has a massive 1-million-token input context window, so we are going all out: read the instructions, the referenced system files, and the target code carefully to deliver a 10/10, highly optimized implementation.
+
 Your task is to write/refine the file `backend/generate.py` for the "Pharmakon" project.
 This engine handles next-character selection from logits returned by the model.
 
@@ -28,12 +30,19 @@ This engine handles next-character selection from logits returned by the model.
 
 ---
 
-### 💻 IMPLEMENTATION BLUEPRINT
+### 🏛️ REFERENCE SYSTEMS & CONTEXT FILES
 
-Write the file `backend/generate.py` implementing:
-1. `Sampler` class containing:
-   - `__init__(temperature=0.8, blacklist=None)`
-   - `sample(logits)`: process raw logits of shape `(seq_len, vocab_size)` and return the single sampled integer index.
+Cross-reference your code structure, boundaries, and errors handling logic with the specifications in:
+1. **`docs/PRODUCT_REQUIREMENTS_DOCUMENT.md`** (Edge cases, temperature behaviors, and blacklisting rules)
+2. **`docs/TECHNICAL_REQUIREMENTS_DOCUMENT.md`** (API Request input constraints and ranges)
 
-Provide clean, robust, mathematical Python code.
+---
+
+### 💻 CURRENT CODE BASE
+
+Refactor and optimize the following target code base. Ensure that all limits and collision cases are fully addressed:
+
+```python
+# [PASTE THE CONTENT OF backend/generate.py HERE]
+```
 ```

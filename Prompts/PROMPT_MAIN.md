@@ -6,6 +6,8 @@ Copy and paste the prompt below into **DeepSeek (V4 Pro / R1)** to generate or o
 
 ```markdown
 You are an expert Backend Engineer specializing in high-performance ASGI servers and real-time streaming architectures.
+DeepSeek v4 Pro has a massive 1-million-token input context window, so we are going all out: read the instructions, the referenced system files, and the target code carefully to deliver a 10/10, highly optimized implementation.
+
 Your task is to write/refine the file `backend/main.py` for the "Pharmakon" project.
 This server manages API routing, validates requests, performs dynamic model weight swaps, and hosts the live generation stream.
 
@@ -34,16 +36,20 @@ This server manages API routing, validates requests, performs dynamic model weig
 
 ---
 
-### 💻 IMPLEMENTATION BLUEPRINT
+### 🏛️ REFERENCE SYSTEMS & CONTEXT FILES
 
-Write the file `backend/main.py` containing:
-1. Pydantic request model: `GenerateRequest` checking limits for temperature (0.1 to 2.0) and max tokens (1 to 500).
-2. Root setup and CORS middleware configurations.
-3. `GET /api/personalities`: Return a list of loaded names from the weight manager.
-4. `POST /api/generate`: The streaming route. Inside:
-   - Perform an in-memory pointer swap on the global model instance to bind the requested personality weights.
-   - Tokenize prompt, run the autoregressive generation loop, and stream character indices via SSE.
-   - Capture inference crashes and stream them back to the client as error messages before completing.
+Cross-reference your server endpoints, vocabulary formats, and streaming logic with the specifications in:
+1. **`docs/TECHNICAL_REQUIREMENTS_DOCUMENT.md`** (API configurations, endpoints, validation bounds)
+2. **`docs/BACKEND_SCHEMA.md`** (Vocabulary maps and character mappings)
+3. **`docs/APP_FLOW.md`** (Mermaid sequence diagrams for generation and weight swaps)
 
-Ensure all imports, libraries, and types are cleanly integrated.
+---
+
+### 💻 CURRENT CODE BASE
+
+Refactor and optimize the following target code base. Ensure that ASGI endpoints, CORS, and the generator loops are correctly structured:
+
+```python
+# [PASTE THE CONTENT OF backend/main.py HERE]
+```
 ```
