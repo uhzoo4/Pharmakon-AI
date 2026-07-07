@@ -152,7 +152,7 @@ class WeightManager:
         """Return a sorted list of all loaded personality names."""
         return sorted(self.personalities.keys())
 
-    def save_weights(self, name: str, weights: Dict[str, np.ndarray], metadata: Dict = None) -> None:
+    def save_weights(self, name: str, weights: Dict[str, np.ndarray], metadata: Dict | None = None) -> None:
         """Validate and atomically save personality weight dictionary to disk and update cache."""
         import tempfile
         import datetime
@@ -227,7 +227,7 @@ class WeightManager:
                 tmp_f,
                 config=np.array(json.dumps(config)),
                 metadata=np.array(json.dumps(meta)),
-                **float_weights
+                **float_weights  # type: ignore[arg-type]
             )
             tmp_path = Path(tmp_f.name)
 

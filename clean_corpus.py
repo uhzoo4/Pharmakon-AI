@@ -47,7 +47,7 @@ VOCAB_SIZE: int = len(VOCAB_CHARS)  # 97
 
 # Smart Punctuation Mapping (Pre-NFKD normalization)
 # Maps specific Unicode codepoints to their ASCII equivalents.
-SMART_MAP: Dict[str, str] = {
+SMART_MAP: Dict[str, str | int | None] = {
     "\u2019": "'",  # Right Single Quotation Mark
     "\u2018": "'",  # Left Single Quotation Mark
     "\u201C": '"',  # Left Double Quotation Mark
@@ -134,7 +134,7 @@ def clean_text(text: str) -> Tuple[str, Dict[str, int]]:
     decomposed = unicodedata.normalize("NFKD", text)
     
     # Pre-allocate list for performance (approx size)
-    cleaned_chars = []
+    cleaned_chars: list[str] = []
     cleaned_chars_append = cleaned_chars.append
     dropped: Dict[str, int] = {}
     dropped_get = dropped.get
