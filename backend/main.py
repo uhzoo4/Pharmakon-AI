@@ -1,12 +1,19 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pathlib import Path
 import asyncio
 import numpy as np
 import json
+import sys
+import time
+import uuid
 
+# Adjust sys.path to resolve root-level imports
+sys.path.append(str(Path(__file__).parent.parent))
+from clean_corpus import clean_text
+import train
 
 from weight_manager import WeightManager
 from transformer import PharmakonTransformer
@@ -67,6 +74,47 @@ class GenerateRequest(BaseModel):
     temperature: float = Field(default=0.8, ge=0.05, le=2.0)
     max_tokens: int = Field(default=200, ge=1, le=500)
     blacklist: list[int] = Field(default_factory=list)
+
+
+class TrainRequest(BaseModel):
+    personality: str = Field(..., min_length=2, max_length=64, pattern=r"^[a-z0-9_-]+$")
+    text: str = Field(..., min_length=100, max_length=5_242_880)
+    epochs: int = Field(default=5, ge=1, le=50)
+    batch_size: int = Field(default=16, ge=1, le=128)
+    lr: float = Field(default=3e-4, ge=1e-5, le=1e-2)
+
+    @field_validator("personality")
+    @classmethod
+    def clean_personality(cls, v: str) -> str:
+        return v.strip().lower()
+
+
+training_lock = asyncio.Lock()
+
+
+def extract_weights(model: PharmakonTransformer) -> dict[str, np.ndarray]:
+    """Extract model parameters cast to float32 for storage."""
+    params_dict = {}
+    params_dict["token_embedding"] = model.token_embedding.astype(np.float32)
+    params_dict["W_out"] = model.W_out.astype(np.float32)
+    params_dict["ln_final_gamma"] = model.ln_final.gamma.astype(np.float32)
+    params_dict["ln_final_beta"] = model.ln_final.beta.astype(np.float32)
+
+    for i, block in enumerate(model.blocks):
+        prefix = f"block_{i}_"
+        params_dict[prefix + "Wq"] = block.Wq.astype(np.float32)
+        params_dict[prefix + "Wk"] = block.Wk.astype(np.float32)
+        params_dict[prefix + "Wv"] = block.Wv.astype(np.float32)
+        params_dict[prefix + "Wo"] = block.Wo.astype(np.float32)
+        params_dict[prefix + "ln1_gamma"] = block.ln1.gamma.astype(np.float32)
+        params_dict[prefix + "ln1_beta"] = block.ln1.beta.astype(np.float32)
+        params_dict[prefix + "ln2_gamma"] = block.ln2.gamma.astype(np.float32)
+        params_dict[prefix + "ln2_beta"] = block.ln2.beta.astype(np.float32)
+        params_dict[prefix + "W1"] = block.W1.astype(np.float32)
+        params_dict[prefix + "b1"] = block.b1.astype(np.float32)
+        params_dict[prefix + "W2"] = block.W2.astype(np.float32)
+        params_dict[prefix + "b2"] = block.b2.astype(np.float32)
+    return params_dict
 
 
 @app.get("/api/personalities")
@@ -147,3 +195,109 @@ async def generate_text(req: GenerateRequest, request: Request):
                 active_clients.discard(client_ip)
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/api/train")
+async def train_personality(req: TrainRequest):
+    """
+    On-demand training and fine-tuning endpoint.
+    Accepts raw text, cleans it, trains a local model copy,
+    validates the final parameters, and atomically updates the cache/disk.
+    """
+    training_id = str(uuid.uuid4())
+    start_time = time.time()
+    
+    print(f"[{training_id}] Starting training run for personality: '{req.personality}'")
+    
+    async with training_lock:
+        try:
+            # 1. Clean Corpus
+            cleaned_text, dropped_counts = clean_text(req.text)
+            
+            # 2. Validate clean text length (must fit sequence window)
+            if len(cleaned_text) < 66:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": f"Cleaned text is too short ({len(cleaned_text)} chars after cleaning). "
+                                 f"Must be at least 66 characters to train."
+                    }
+                )
+            
+            # 3. Load or Initialize weights
+            created_new = False
+            if req.personality in weight_manager.personalities:
+                orig_weights = weight_manager.get_weights(req.personality)
+                weights_dict = {k: v.copy() for k, v in orig_weights.items() if k not in ("config", "metadata")}
+            else:
+                weights_dict = weight_manager._generate_xavier_weights()
+                created_new = True
+                
+            # Cast parameters to float64 for backprop precision
+            weights_double = {k: v.astype(np.float64) for k, v in weights_dict.items()}
+            
+            # 4. Instantiate local model instance
+            local_model = PharmakonTransformer(
+                vocab_size=VOCAB_SIZE,
+                embed_dim=weight_manager.embed_dim,
+                num_heads=weight_manager.num_heads,
+                ff_dim=weight_manager.ff_dim,
+                num_layers=weight_manager.num_layers,
+                max_seq_len=64,
+                dropout=0.0
+            )
+            local_model.load_weights(weights_double)
+            
+            # Calculate training hyperparameters
+            warmup_steps = min(100, len(cleaned_text) // (req.batch_size * 64))
+            
+            # 5. Train in-memory (updates local_model in place)
+            train.train(
+                model=local_model,
+                data=cleaned_text,
+                char_to_idx=char_to_idx,
+                epochs=req.epochs,
+                batch_size=req.batch_size,
+                seq_len=64,
+                lr=req.lr,
+                weight_decay=0.01,
+                warmup_steps=warmup_steps,
+                use_checkpoint=True
+            )
+            
+            # 6. Extract updated parameters and validate
+            updated_weights = extract_weights(local_model)
+            
+            # 7. Atomic Save & Cache Refresh
+            meta_info = {
+                "epochs": req.epochs,
+                "token_count": len(cleaned_text)
+            }
+            weight_manager.save_weights(req.personality, updated_weights, metadata=meta_info)
+            
+            duration = time.time() - start_time
+            print(f"[{training_id}] Completed training successfully in {duration:.2f}s.")
+            
+            return {
+                "success": True,
+                "training_id": training_id,
+                "personality": req.personality,
+                "created": created_new,
+                "epochs": req.epochs,
+                "batch_size": req.batch_size,
+                "learning_rate": req.lr,
+                "training_tokens": len(cleaned_text),
+                "training_time_seconds": round(duration, 2)
+            }
+            
+        except Exception as e:
+            import traceback
+            print(f"[{training_id}] Training failed: {str(e)}")
+            traceback.print_exc()
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": f"Training failed: {str(e)}",
+                    "training_id": training_id
+                }
+            )

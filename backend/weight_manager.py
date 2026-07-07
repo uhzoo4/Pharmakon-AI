@@ -6,7 +6,8 @@ All weights are kept in RAM to enable instant personality switches (<1 ms).
 On first run (empty weights/ folder), default personalities are automatically
 generated using Xavier uniform initialization and saved as compressed .npz files.
 """
-
+import json
+import os
 import numpy as np
 from pathlib import Path
 from typing import Dict, List
@@ -150,3 +151,94 @@ class WeightManager:
     def list_personalities(self) -> List[str]:
         """Return a sorted list of all loaded personality names."""
         return sorted(self.personalities.keys())
+
+    def save_weights(self, name: str, weights: Dict[str, np.ndarray], metadata: Dict = None) -> None:
+        """Validate and atomically save personality weight dictionary to disk and update cache."""
+        import tempfile
+        import datetime
+
+        # 1. Structural Verification: define expected shape for all model parameters
+        shape_specs = {
+            "token_embedding": (self.vocab_size, self.embed_dim),
+            "W_out": (self.embed_dim, self.vocab_size),
+            "ln_final_gamma": (self.embed_dim,),
+            "ln_final_beta": (self.embed_dim,),
+        }
+        for i in range(self.num_layers):
+            prefix = f"block_{i}_"
+            shape_specs.update({
+                prefix + "Wq": (self.embed_dim, self.embed_dim),
+                prefix + "Wk": (self.embed_dim, self.embed_dim),
+                prefix + "Wv": (self.embed_dim, self.embed_dim),
+                prefix + "Wo": (self.embed_dim, self.embed_dim),
+                prefix + "ln1_gamma": (self.embed_dim,),
+                prefix + "ln1_beta": (self.embed_dim,),
+                prefix + "ln2_gamma": (self.embed_dim,),
+                prefix + "ln2_beta": (self.embed_dim,),
+                prefix + "W1": (self.embed_dim, self.ff_dim),
+                prefix + "b1": (self.ff_dim,),
+                prefix + "W2": (self.ff_dim, self.embed_dim),
+                prefix + "b2": (self.embed_dim,),
+            })
+
+        # 2. Numerical validation
+        for key, expected_shape in shape_specs.items():
+            if key not in weights:
+                raise ValueError(f"Missing required parameter: {key}")
+            val = weights[key]
+            if val.shape != expected_shape:
+                raise ValueError(f"Parameter {key} has invalid shape {val.shape}, expected {expected_shape}")
+            if not np.isfinite(val).all():
+                raise ValueError(f"Parameter {key} contains non-finite values (NaN or Inf)")
+
+        # 3. Create JSON-serializable config state
+        config = {
+            "version": 1,
+            "vocab_size": self.vocab_size,
+            "d_model": self.embed_dim,
+            "num_heads": self.num_heads,
+            "num_layers": self.num_layers,
+            "ffn_dim": self.ff_dim,
+            "sequence_length": 64
+        }
+        
+        # 4. Create JSON-serializable metadata state
+        meta = {
+            "created_at": datetime.datetime.now().isoformat(),
+            "updated_at": datetime.datetime.now().isoformat(),
+            "epochs": metadata.get("epochs", 0) if metadata else 0,
+            "token_count": metadata.get("token_count", 0) if metadata else 0
+        }
+
+        # Filter out existing config/metadata arrays and convert to float32
+        float_weights = {
+            k: v.astype(np.float32) for k, v in weights.items() 
+            if k not in ("config", "metadata")
+        }
+
+        # 5. Atomic check-point save via NamedTemporaryFile
+        with tempfile.NamedTemporaryFile(
+            mode="wb", 
+            dir=self.weights_dir, 
+            delete=False, 
+            suffix=".tmp.npz"
+        ) as tmp_f:
+            np.savez_compressed(
+                tmp_f,
+                config=np.array(json.dumps(config)),
+                metadata=np.array(json.dumps(meta)),
+                **float_weights
+            )
+            tmp_path = Path(tmp_f.name)
+
+        final_path = self.weights_dir / f"{name}.npz"
+        try:
+            # Atomic swap using os.replace
+            os.replace(tmp_path, final_path)
+        except Exception as e:
+            if tmp_path.exists():
+                tmp_path.unlink()
+            raise e
+
+        # 6. In-memory cache refresh (directly load dictionary from final file)
+        self.personalities[name] = dict(np.load(final_path))
