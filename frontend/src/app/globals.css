@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --color-np-surface-0: #050505;
+  --color-np-surface-1: #0A0A0A;
+  --color-np-surface-2: #101214;
+  --color-np-surface-3: #16181D;
+  --color-np-surface-navy: #0B1220;
+
+  --color-np-text-primary: #EDEEF0;
+  --color-np-text-secondary: #9DA3AC;
+  --color-np-text-tertiary: #6B7078;
+
+  --color-np-border-hairline: rgba(255, 255, 255, 0.08);
+  --color-np-border-visible: #3A3D42;
+
+  --color-np-accent-steel: #5C7A94;
+  --color-np-accent-steel-bright: #7FA0B8;
+  --color-np-accent-ice: #8ECAE6;
+
+  --color-np-semantic-amber: #D9A441;
+  --color-np-semantic-red: #C9605A;
+
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --spacing-24: 96px;
+  --spacing-32: 128px;
+  --spacing-48: 192px;
+  --spacing-64: 256px;
+
+  --radius-np-sm: 6px;
+  --radius-np-md: 12px;
+  --radius-np-lg: 20px;
+  --radius-np-full: 9999px;
+
+  --transition-duration-np-instant: 100ms;
+  --transition-duration-np-fast: 180ms;
+  --transition-duration-np-base: 320ms;
+  --transition-duration-np-slow: 480ms;
+  --transition-duration-np-cinematic: 720ms;
+
+  --ease-np-approach: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-np-departure: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-np-drift: cubic-bezier(0.37, 0, 0.63, 1);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-np-surface-0);
+  color: var(--color-np-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
