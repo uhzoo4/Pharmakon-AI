@@ -57,7 +57,8 @@ weights_dir = BASE_DIR / "weights"
 weight_manager = WeightManager(weights_dir, vocab_size=VOCAB_SIZE)
 
 
-model = PharmakonTransformer(vocab_size=VOCAB_SIZE)
+personality_models: dict[str, PharmakonTransformer] = {}
+personality_models_lock = asyncio.Lock()
 
 # -------------------------------------------------------------------
 # Simple IP‑based concurrency limiter (1 active generation per IP)
@@ -144,11 +145,20 @@ async def generate_text(req: GenerateRequest, request: Request):
 
     async def event_stream():
         try:
-            # 1. Instantiate a request-isolated model copy and load weight pointers
+            # 1. Retrieve or instantiate a request-isolated model copy for this personality
             try:
-                local_model = PharmakonTransformer(vocab_size=VOCAB_SIZE)
-                params_dict = weight_manager.get_weights(req.personality)
-                local_model.load_weights(params_dict)
+                # Fast path: check cache first (no lock needed for read)
+                if req.personality in personality_models:
+                    local_model = personality_models[req.personality]
+                else:
+                    async with personality_models_lock:
+                        # Double-check inside lock
+                        if req.personality not in personality_models:
+                            m = PharmakonTransformer(vocab_size=VOCAB_SIZE)
+                            params_dict = weight_manager.get_weights(req.personality)
+                            m.load_weights(params_dict)
+                            personality_models[req.personality] = m
+                        local_model = personality_models[req.personality]
             except Exception as e:
                 yield f"data: {json.dumps({'error': f'Failed to swap weight matrix: {str(e)}'})}\n\n"
                 yield f"data: {json.dumps({'done': True})}\n\n"
@@ -302,6 +312,10 @@ async def train_personality(req: TrainRequest):
                 "token_count": len(cleaned_text)
             }
             weight_manager.save_weights(req.personality, updated_weights, metadata=meta_info)
+            
+            # Invalidate cached model to ensure the next generation request reloads new weights
+            async with personality_models_lock:
+                personality_models.pop(req.personality, None)
             
             duration = time.time() - start_time
             print(f"[{training_id}] Completed training successfully in {duration:.2f}s.")
