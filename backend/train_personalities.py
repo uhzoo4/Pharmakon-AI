@@ -34,7 +34,6 @@ PERSONALITY_TEXTS = {
     "kafkaesque": [
         "The Trial.txt",
         "Metamorphosis.txt",
-        "Die Verwandlung.txt",
     ],
     "camus_stranger": [
         "camus_stranger.txt",

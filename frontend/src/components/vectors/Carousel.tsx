@@ -13,7 +13,7 @@ export const PERSONALITIES = [
   { 
     id: "camus_stranger", 
     title: "The Absurdist", 
-    description: "Coldly detached and direct. Confronts the void without sentimentality.",
+    description: "Coldly detached and direct. (Limited corpus — output quality is degraded due to insufficient public-domain training data.)",
   },
   { 
     id: "dark_romance", 
