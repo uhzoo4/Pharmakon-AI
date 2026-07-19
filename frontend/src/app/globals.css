@@ -64,3 +64,29 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Phase 3: Linguistic Dissolution (High Temperature Glitch Effect) */
+@keyframes glitch-anim {
+  0% { text-shadow: 1px 0 0 rgba(217,164,65,0.5), -1px 0 0 rgba(142,202,230,0.5); }
+  33% { text-shadow: -1px 0 0 rgba(217,164,65,0.5), 1px 0 0 rgba(142,202,230,0.5); }
+  66% { text-shadow: 0px 1px 0 rgba(217,164,65,0.5), 0px -1px 0 rgba(142,202,230,0.5); }
+  100% { text-shadow: 1px 0 0 rgba(217,164,65,0.5), -1px 0 0 rgba(142,202,230,0.5); }
+}
+
+.glitch-text {
+  animation: glitch-anim 0.3s ease-in-out infinite;
+}
+
+/* Phase 3: Grimoire PDF Extraction Styles */
+@media print {
+  @page { 
+    margin: 1cm; 
+  }
+  html, body {
+    background-color: #050505 !important;
+    color: #e5e5e5 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .print\:hidden { display: none !important; }
+}

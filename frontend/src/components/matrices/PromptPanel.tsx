@@ -38,7 +38,7 @@ export function PromptPanel({ onGenerate, isGenerating }: PromptPanelProps) {
           }}
           disabled={isGenerating}
           placeholder="The sun rises, yet..."
-          className="w-full min-h-[140px] bg-np-surface-1 border border-np-border-visible rounded-np-md p-5 text-np-text-primary text-lg resize-none focus:outline-none focus:border-np-accent-steel-bright transition-colors disabled:opacity-50"
+          className="w-full min-h-[140px] max-h-[60vh] overflow-y-auto bg-np-surface-1 border border-np-border-visible rounded-np-md p-5 text-np-text-primary text-lg resize-none focus:outline-none focus:border-np-accent-steel-bright transition-colors disabled:opacity-50"
         />
       </motion.div>
       <div className="absolute bottom-4 right-4 z-10">
