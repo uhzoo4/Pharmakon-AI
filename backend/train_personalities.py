@@ -37,10 +37,7 @@ PERSONALITY_TEXTS = {
         "Die Verwandlung.txt",
     ],
     "camus_stranger": [
-        "Beyond Good and Evil.txt",
-        "Ecce Homo.txt",
-        "Thus Spake Zarathustra.txt",
-        "The Essays of Arthur Schopenhauer; Studies in Pessimism.txt",
+        "camus_stranger.txt",
     ],
     "dark_romance": [
         "Wuthering Heights.txt",
