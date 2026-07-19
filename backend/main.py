@@ -165,7 +165,11 @@ async def generate_text(req: GenerateRequest, request: Request):
                 return
 
             # 2. Tokenize prompt
-            input_indices = encode_prompt(req.prompt)
+            formatted_prompt = req.prompt
+            if req.personality == "the_assistant":
+                formatted_prompt = f"User: {req.prompt.strip()}\nAssistant:"
+
+            input_indices = encode_prompt(formatted_prompt)
             if not input_indices:
                 # Fallback priming token for completely empty prompt
                 input_indices = [char_to_idx["\n"]]

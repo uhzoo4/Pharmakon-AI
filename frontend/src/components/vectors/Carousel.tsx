@@ -24,6 +24,11 @@ export const PERSONALITIES = [
     id: "modern_conversation",
     title: "The Casual Talker",
     description: "Speaks in modern, conversational, everyday English with normal pacing and slang.",
+  },
+  {
+    id: "the_assistant",
+    title: "The AI Assistant",
+    description: "A helpful instruction-tuned AI model trained to answer questions (Claude-style SFT).",
   }
 ];
 
