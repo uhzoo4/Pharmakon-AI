@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NumPy AI — Workspace</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A0A0A'/%3E%3Cline x1='12' y1='22' x2='20' y2='10' stroke='%238ECAE6' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100;200;300;400;500;600&family=Geist+Mono:wght@400;500&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Surfaces */
+    --np-surface-0:#050505;
+    --np-surface-1:#0A0A0A;
+    --np-surface-2:#101214;
+    --np-surface-3:#16181D;
+    --np-surface-navy:#0B1220;
+
+    /* Text */
+    --np-text-primary:#EDEEF0;
+    --np-text-secondary:#9DA3AC;
+    --np-text-tertiary:#6B7078;
+
+    /* Borders */
+    --np-border-hairline: rgba(255,255,255,0.08);
+    --np-border-visible:#3A3D42;
+
+    /* Accents */
+    --np-accent-steel:#5C7A94;
+    --np-accent-steel-bright:#7FA0B8;
+    --np-accent-ice:#8ECAE6;
+
+    /* Semantic */
+    --np-semantic-amber:#D9A441;
+    --np-semantic-red:#C9605A;
+
+    /* Spacing */
+    --np-space-1:4px; --np-space-2:8px; --np-space-3:12px;
+    --np-space-4:16px; --np-space-6:24px; --np-space-8:32px;
+    --np-space-12:48px; --np-space-16:64px; --np-space-24:96px;
+
+    /* Radius */
+    --np-radius-sm:6px; --np-radius-md:12px; --np-radius-lg:20px; --np-radius-full:9999px;
+
+    /* Motion */
+    --np-dur-instant:100ms; --np-dur-fast:180ms; --np-dur-base:320ms;
+    --np-dur-slow:480ms; --np-dur-cinematic:720ms;
+    --np-ease-approach: cubic-bezier(0.16, 1, 0.3, 1);
+    --np-ease-departure: cubic-bezier(0.7, 0, 0.84, 0);
+    --np-ease-drift: cubic-bezier(0.37, 0, 0.63, 1);
+
+    --font-sans: 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background: var(--np-surface-0);
+    color: var(--np-text-primary);
+    font-family: var(--font-sans);
+    font-size:16px;
+    line-height:1.5;
+    overflow:hidden;
+  }
+
+  *:focus-visible{
+    outline: 2px solid var(--np-accent-ice);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  button{ font-family: inherit; }
+
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-track{ background: transparent; }
+  ::-webkit-scrollbar-thumb{ background: var(--np-border-visible); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover{ background: var(--np-text-tertiary); }
+
+  /* Typography tiers */
+  .t-caption{ font-size:12px; line-height:16px; color: var(--np-text-secondary); }
+  .t-body-sm{ font-size:14px; line-height:20px; }
+  .t-body{ font-size:16px; line-height:24px; }
+  .t-subhead{ font-size:21px; line-height:28px; font-weight:500; }
+  .t-title{ font-size:24px; line-height:32px; font-weight:500; }
+  .t-eyebrow{ font-size:11px; line-height:14px; letter-spacing:0.08em; text-transform:uppercase; color: var(--np-text-tertiary); }
+  .t-mono{ font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  /* Ambient background */
+  .np-ambient{
+    position:fixed; inset:-10%; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(circle at 28% 22%, rgba(92,122,148,0.07), transparent 60%),
+      radial-gradient(circle at 78% 72%, rgba(11,18,32,0.55), transparent 55%);
+    animation: np-drift 22s var(--np-ease-drift) infinite;
+  }
+  @keyframes np-drift{
+    0%{ transform: translate(-2%,-1%) scale(1); }
+    50%{ transform: translate(2%,1%) scale(1.03); }
+    100%{ transform: translate(-2%,-1%) scale(1); }
+  }
+
+  .app-shell{
+    position:relative; z-index:1;
+    display:grid;
+    grid-template-columns: 232px 1fr 300px;
+    height:100vh;
+  }
+
+  /* ---------- Rail ---------- */
+  .rail{
+    background: var(--np-surface-1);
+    border-right: 1px solid var(--np-border-hairline);
+    display:flex; flex-direction:column;
+    padding: var(--np-space-6) var(--np-space-4);
+    gap: var(--np-space-8);
+    min-width:0;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; padding: 0 var(--np-space-2); }
+  .brand svg{ flex-shrink:0; }
+  .brand-name{ font-weight:300; font-size:17px; letter-spacing:0.01em; }
+
+  .nav{ display:flex; flex-direction:column; gap:2px; }
+  .nav-item{
+    position:relative;
+    display:flex; align-items:center; gap:12px;
+    padding:10px 12px;
+    border-radius: var(--np-radius-sm);
+    color: var(--np-text-secondary);
+    cursor:pointer;
+    transition: background var(--np-dur-fast) ease-out, color var(--np-dur-fast) ease-out;
+    user-select:none;
+  }
+  .nav-item svg{ flex-shrink:0; opacity:0.9; }
+  .nav-item:hover{ background: var(--np-surface-2); color: var(--np-text-primary); }
+  .nav-item .tick{
+    position:absolute; left:-4px; top:50%; width:2px; height:14px;
+    background: var(--np-accent-ice);
+    transform: translateY(-50%) rotate(18deg);
+    opacity:0; transition: opacity var(--np-dur-fast) ease-out;
+    border-radius:1px;
+  }
+  .nav-item.active{ background: var(--np-surface-2); color: var(--np-text-primary); }
+  .nav-item.active .tick{ opacity:1; }
+
+  .rail-footer{ margin-top:auto; padding: var(--np-space-2); display:flex; flex-direction:column; gap:4px; }
+
+  /* ---------- Workspace ---------- */
+  .workspace{ display:flex; flex-direction:column; min-width:0; }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: var(--np-space-4) var(--np-space-6);
+    border-bottom: 1px solid var(--np-border-hairline);
+    min-height:64px;
+    gap: var(--np-space-4);
+  }
+  .topbar-left{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .topbar-left .t-title{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .topbar-right{ display:flex; align-items:center; gap: var(--np-space-3); }
+
+  .chip{
+    display:inline-flex; align-items:center; gap:6px;
+    padding: 4px 10px; border-radius: var(--np-radius-full);
+    border: 1px solid var(--np-border-hairline);
+    font-size:12px; color: var(--np-semantic-amber);
+    white-space:nowrap;
+  }
+  .chip .dot{ width:5px; height:5px; border-radius:50%; background: var(--np-semantic-amber); }
+
+  .icon-btn{
+    display:flex; align-items:center; justify-content:center;
+    width:34px; height:34px; border-radius: var(--np-radius-sm);
+    background: transparent; border: 1px solid var(--np-border-hairline);
+    color: var(--np-text-secondary); cursor:pointer;
+    transition: background var(--np-dur-fast) ease-out, color var(--np-dur-fast) ease-out, border-color var(--np-dur-fast) ease-out;
+  }
+  .icon-btn:hover{ background: var(--np-surface-2); color: var(--np-text-primary); border-color: var(--np-border-visible); }
+
+  .kbd-btn{
+    display:flex; align-items:center; gap:8px;
+    padding: 6px 10px; border-radius: var(--np-radius-sm);
+    background: transparent; border:1px solid var(--np-border-hairline);
+    color: var(--np-text-secondary); cursor:pointer; font-size:13px;
+    transition: background var(--np-dur-fast) ease-out, color var(--np-dur-fast) ease-out;
+  }
+  .kbd-btn:hover{ background: var(--np-surface-2); color: var(--np-text-primary); }
+  .kbd-btn kbd{
+    font-family: var(--font-mono); font-size:11px; padding:1px 5px;
+    border:1px solid var(--np-border-visible); border-radius:4px; color: var(--np-text-tertiary);
+  }
+
+  .confirm-bar{
+    display:flex; align-items:center; gap: var(--np-space-3);
+    background: var(--np-surface-2); border:1px solid var(--np-border-hairline);
+    padding: 8px 14px; border-radius: var(--np-radius-sm);
+  }
+  .confirm-bar span{ font-size:13px; color: var(--np-text-secondary); }
+  .btn-ghost{
+    background:transparent; border:1px solid var(--np-border-hairline); color: var(--np-text-secondary);
+    padding:6px 12px; border-radius: var(--np-radius-sm); cursor:pointer; font-size:13px;
+    transition: background var(--np-dur-fast) ease-out;
+  }
+  .btn-ghost:hover{ background: var(--np-surface-3); color: var(--np-text-primary); }
+  .btn-danger{
+    background:transparent; border:1px solid var(--np-border-visible); color: var(--np-semantic-red);
+    padding:6px 12px; border-radius: var(--np-radius-sm); cursor:pointer; font-size:13px;
+    transition: background var(--np-dur-fast) ease-out, border-color var(--np-dur-fast) ease-out;
+  }
+  .btn-danger:hover{ background: rgba(201,96,90,0.08); border-color: var(--np-semantic-red); }
+
+  /* ---------- Conversation ---------- */
+  .conversation{ flex:1; min-height:0; overflow-y:auto; }
+  .conversation-inner{
+    max-width:720px; margin:0 auto; width:100%;
+    padding: var(--np-space-8) var(--np-space-6);
+    display:flex; flex-direction:column; gap: var(--np-space-8);
+  }
+
+  .message{ display:flex; flex-direction:column; gap:6px; }
+  .message-meta{ display:flex; align-items:center; gap:6px; }
+  .message-meta .sender{ font-size:13px; font-weight:500; color: var(--np-text-secondary); }
+  .message.message-ai .message-meta .sender{ color: var(--np-accent-steel-bright); }
+  .message-meta .dot{ color: var(--np-text-tertiary); font-size:12px; }
+  .message-meta .time{ font-family: var(--font-mono); font-size:11px; color: var(--np-text-tertiary); }
+  .message-body{ font-size:16px; line-height:1.65; color: var(--np-text-primary); white-space:pre-wrap; }
+  .message-body:empty::after{ content:''; }
+
+  .reasoning{ margin-top:2px; }
+  .reasoning-toggle{
+    display:inline-flex; align-items:center; gap:6px;
+    background:none; border:none; color: var(--np-text-tertiary);
+    font-size:12px; cursor:pointer; padding:2px 0;
+    transition: color var(--np-dur-fast) ease-out;
+  }
+  .reasoning-toggle:hover{ color: var(--np-text-secondary); }
+  .reasoning-toggle .chev{ transition: transform var(--np-dur-base) var(--np-ease-approach); }
+  .reasoning.open .reasoning-toggle .chev{ transform: rotate(180deg); }
+  .reasoning-trace{
+    font-family: var(--font-mono); font-size:12.5px; line-height:1.9;
+    color: var(--np-text-tertiary);
+    max-height:0; opacity:0; overflow:hidden;
+    transition: max-height var(--np-dur-slow) var(--np-ease-approach), opacity var(--np-dur-base) ease-out, margin var(--np-dur-slow) var(--np-ease-approach);
+    margin-top:0;
+    border-left: 2px solid var(--np-border-visible);
+    padding-left:12px;
+  }
+  .reasoning.open .reasoning-trace{ max-height:200px; opacity:1; margin-top:10px; }
+
+  /* Phase sequence */
+  .phase-row{ display:flex; flex-direction:column; gap:8px; max-width:420px; }
+  .phase-labels{ display:flex; justify-content:space-between; }
+  .phase-item{ font-family: var(--font-mono); font-size:11.5px; color: var(--np-text-tertiary); transition: color var(--np-dur-base) ease-out; }
+  .phase-item.active{ color: var(--np-accent-ice); }
+  .phase-track{ position:relative; height:1px; background: var(--np-border-visible); border-radius:2px; }
+  .phase-indicator{
+    position:absolute; top:-6px; width:2px; height:13px;
+    background: var(--np-accent-ice); border-radius:1px;
+    transform: rotate(18deg);
+    left:0%;
+    transition: left var(--np-dur-base) var(--np-ease-approach);
+  }
+
+  /* Empty state */
+  .empty-state{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap: var(--np-space-4); text-align:center; padding: var(--np-space-8);
+    max-width:360px; margin:auto;
+  }
+  .empty-state svg{ opacity:0.6; }
+  .empty-state .t-subhead{ font-weight:400; color: var(--np-text-secondary); }
+
+  /* ---------- Prompt panel ---------- */
+  .prompt-panel{
+    margin: 0 var(--np-space-6) var(--np-space-6);
+    background: var(--np-surface-2);
+    border: 1px solid var(--np-border-hairline);
+    border-radius: var(--np-radius-lg);
+    padding: var(--np-space-4) var(--np-space-4) var(--np-space-3);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 20px 40px -28px rgba(0,0,0,0.7);
+    max-width:720px; width:calc(100% - 48px); margin-inline:auto;
+  }
+  .prompt-toolbar{ display:flex; align-items:center; gap: var(--np-space-2); margin-bottom:8px; }
+  .tool-btn{
+    display:flex; align-items:center; justify-content:center;
+    width:28px; height:28px; border-radius: var(--np-radius-sm);
+    background:transparent; border:none; color: var(--np-text-tertiary); cursor:pointer;
+    transition: background var(--np-dur-fast) ease-out, color var(--np-dur-fast) ease-out;
+  }
+  .tool-btn:hover{ background: var(--np-surface-3); color: var(--np-text-secondary); }
+  .prompt-hint{ margin-left:auto; font-size:11px; color: var(--np-text-tertiary); }
+
+  textarea#prompt-input{
+    width:100%; resize:none; border:none; background:transparent;
+    color: var(--np-text-primary); font-family: var(--font-sans); font-size:15px;
+    line-height:1.6; min-height:44px; max-height:160px; outline:none;
+    padding:2px 2px 8px;
+  }
+  textarea#prompt-input::placeholder{ color: var(--np-text-tertiary); }
+
+  .prompt-footer{ display:flex; align-items:center; justify-content:flex-end; }
+  .send-btn{
+    display:flex; align-items:center; gap:8px;
+    background: var(--np-accent-steel); color:#0A0E12;
+    border:none; padding:8px 16px; border-radius: var(--np-radius-sm);
+    font-size:13px; font-weight:500; cursor:pointer;
+    transition: background var(--np-dur-fast) ease-out, transform var(--np-dur-instant) linear;
+  }
+  .send-btn:hover{ background: var(--np-accent-steel-bright); }
+  .send-btn:active{ transform: scale(0.97); }
+  .send-btn:disabled{ background: var(--np-surface-3); color: var(--np-text-tertiary); cursor:default; }
+
+  /* ---------- Artifact dock ---------- */
+  .artifact-dock{
+    background: var(--np-surface-1);
+    border-left: 1px solid var(--np-border-hairline);
+    padding: var(--np-space-6) var(--np-space-4);
+    display:flex; flex-direction:column; gap: var(--np-space-4);
+    overflow-y:auto;
+  }
+  .artifact-card{
+    background: var(--np-surface-2); border:1px solid var(--np-border-hairline);
+    border-radius: var(--np-radius-md); padding: var(--np-space-4);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+  .artifact-card-head{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .artifact-filename{ font-family: var(--font-mono); font-size:13px; color: var(--np-text-primary); }
+  .artifact-meta{ font-size:11.5px; color: var(--np-text-tertiary); margin-bottom:10px; }
+  .code-preview{
+    font-family: var(--font-mono); font-size:12px; line-height:1.8;
+    color: var(--np-text-secondary); background: var(--np-surface-1);
+    border-radius: var(--np-radius-sm); padding:10px 12px; overflow-x:auto;
+    border: 1px solid var(--np-border-hairline);
+  }
+  .code-preview .kw{ color: var(--np-accent-steel-bright); }
+  .code-preview .num{ color: var(--np-accent-ice); }
+
+  .dock-empty{
+    border: 1px dashed var(--np-border-visible); border-radius: var(--np-radius-md);
+    padding: var(--np-space-4); text-align:center;
+    color: var(--np-text-tertiary); font-size:12.5px; line-height:1.6;
+  }
+
+  /* ---------- Command palette ---------- */
+  .palette-overlay{
+    position:fixed; inset:0; z-index:50;
+    background: rgba(5,5,5,0.55);
+    display:flex; justify-content:center; padding-top:14vh;
+    opacity:0; pointer-events:none;
+    transition: opacity var(--np-dur-base) var(--np-ease-approach);
+  }
+  .palette-overlay.open{ opacity:1; pointer-events:auto; }
+  .palette{
+    width:min(560px,90vw); max-height:60vh;
+    background: rgba(22,24,29,0.72);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border:1px solid var(--np-border-hairline);
+    border-radius: var(--np-radius-lg);
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.8);
+    padding: var(--np-space-4);
+    transform: translateY(-8px) scale(0.98);
+    transition: transform var(--np-dur-base) var(--np-ease-approach);
+    display:flex; flex-direction:column;
+  }
+  .palette-overlay.open .palette{ transform: translateY(0) scale(1); }
+  #palette-input{
+    width:100%; background:transparent; border:none; outline:none;
+    color: var(--np-text-primary); font-size:16px; font-family: var(--font-sans);
+    padding:8px 6px 14px; border-bottom:1px solid var(--np-border-hairline);
+  }
+  #palette-input::placeholder{ color: var(--np-text-tertiary); }
+  .palette-list{ display:flex; flex-direction:column; gap:2px; margin-top:10px; overflow-y:auto; }
+  .palette-item{
+    position:relative;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 12px; border-radius: var(--np-radius-sm);
+    color: var(--np-text-secondary); cursor:pointer;
+  }
+  .palette-item .tick{
+    position:absolute; left:-2px; top:50%; width:2px; height:12px;
+    background: var(--np-accent-ice); transform: translateY(-50%) rotate(18deg);
+    opacity:0; border-radius:1px;
+  }
+  .palette-item.selected{ background: var(--np-surface-2); color: var(--np-text-primary); }
+  .palette-item.selected .tick{ opacity:1; }
+  .palette-item .shortcut{ font-family: var(--font-mono); font-size:11px; color: var(--np-text-tertiary); }
+
+  /* ---------- Success flag ---------- */
+  .success-flag{
+    position:fixed; top:18px; left:50%; transform:translate(-50%,-12px);
+    display:flex; align-items:center; gap:8px;
+    background: var(--np-surface-2); border:1px solid var(--np-border-hairline);
+    padding:8px 14px; border-radius: var(--np-radius-full);
+    font-size:13px; color: var(--np-text-primary);
+    opacity:0; pointer-events:none; z-index:60;
+    transition: opacity var(--np-dur-fast) ease-out, transform var(--np-dur-base) var(--np-ease-approach);
+    box-shadow: 0 12px 30px -10px rgba(0,0,0,0.6);
+  }
+  .success-flag.show{ opacity:1; transform:translate(-50%,0); }
+  .success-flag svg{ color: var(--np-accent-ice); }
+
+  @media (max-width:1180px){
+    .app-shell{ grid-template-columns: 232px 1fr; }
+    .artifact-dock{ display:none; }
+  }
+  @media (max-width:880px){
+    .app-shell{ grid-template-columns: 64px 1fr; }
+    .brand-name, .nav-item span.label, .rail-footer{ display:none; }
+    .nav-item{ justify-content:center; }
+    .brand{ justify-content:center; padding:0; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .np-ambient{ animation:none; }
+    *{ transition-duration: 1ms !important; animation-duration: 1ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="np-ambient"></div>
+
+<div class="app-shell">
+
+  <!-- ============ RAIL ============ -->
+  <aside class="rail">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#101214" stroke="#3A3D42"/><line x1="12" y1="22" x2="20" y2="10" stroke="#8ECAE6" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <span class="brand-name">NumPy AI</span>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-item active">
+        <span class="tick"></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span class="label">Workspace</span>
+      </div>
+      <div class="nav-item">
+        <span class="tick"></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5h16M4 12h16M4 19h10"/></svg>
+        <span class="label">Chat</span>
+      </div>
+      <div class="nav-item">
+        <span class="tick"></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6l8-3 8 3-8 3-8-3z"/><path d="M4 12l8 3 8-3M4 18l8 3 8-3"/></svg>
+        <span class="label">Library</span>
+      </div>
+      <div class="nav-item">
+        <span class="tick"></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V10M12 19V4M20 19v-6"/></svg>
+        <span class="label">Dashboard</span>
+      </div>
+      <div class="nav-item">
+        <span class="tick"></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 000 -6l.9-1.6-1.7-1.7-1.6.9a1.7 1.7 0 00-6 0l-1.6-.9-1.7 1.7.9 1.6a1.7 1.7 0 000 6l-.9 1.6 1.7 1.7 1.6-.9a1.7 1.7 0 006 0l1.6.9 1.7-1.7z"/></svg>
+        <span class="label">Settings</span>
+      </div>
+    </nav>
+
+    <div class="rail-footer">
+      <span class="t-caption">v1.0 · Dark</span>
+    </div>
+  </aside>
+
+  <!-- ============ WORKSPACE ============ -->
+  <div class="workspace">
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="t-title">Q3 pricing rollout</span>
+        <span class="t-caption t-mono">Updated 2 min ago · 4 messages</span>
+      </div>
+      <div class="topbar-right" id="topbar-actions">
+        <span class="chip"><span class="dot"></span>Context 82%</span>
+        <button class="kbd-btn" id="open-palette-btn" type="button"><span>Commands</span><kbd>⌘K</kbd></button>
+        <button class="icon-btn" id="delete-btn" type="button" title="Delete conversation" aria-label="Delete conversation">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+        </button>
+      </div>
+      <div class="confirm-bar" id="confirm-bar" hidden>
+        <span>Delete this conversation? This can't be undone.</span>
+        <button class="btn-ghost" id="cancel-delete-btn" type="button">Cancel</button>
+        <button class="btn-danger" id="confirm-delete-btn" type="button">Delete</button>
+      </div>
+    </header>
+
+    <main class="conversation" id="conversation">
+      <div class="conversation-inner" id="conversation-content">
+
+        <div class="message">
+          <div class="message-meta"><span class="sender">You</span><span class="dot">·</span><span class="time t-mono">9:41 AM</span></div>
+          <div class="message-body">Draft a rollout plan for the Q3 pricing change, and flag anything risky before I take it to leadership.</div>
+        </div>
+
+        <div class="message message-ai">
+          <div class="message-meta"><span class="sender">NumPy AI</span><span class="dot">·</span><span class="time t-mono">9:41 AM</span></div>
+          <div class="message-body">Here's a three-phase rollout, staged by customer segment rather than by date — that's what actually limits your risk. I've drafted the supporting model in the panel on the right. One assumption is flagged before you commit to it.</div>
+          <div class="reasoning">
+            <button class="reasoning-toggle" type="button" aria-expanded="false">
+              <svg class="chev" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Show reasoning
+            </button>
+            <div class="reasoning-trace">
+              <div>› Parsed intent — the real ask is risk containment, not just a schedule.</div>
+              <div>› Segmented by usage tier instead of by date to isolate blast radius.</div>
+              <div>› Modeled churn sensitivity; flagged the enterprise-tier assumption as unverified.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="empty-state" id="empty-state" hidden>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6B7078" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="9" y1="16" x2="15" y2="8"/></svg>
+        <div class="t-subhead">Nothing here yet.</div>
+        <div class="t-caption">Start a new conversation and NumPy AI will build the first draft.</div>
+        <button class="btn-ghost" id="start-new-btn" type="button">Start a new conversation</button>
+      </div>
+    </main>
+
+    <div class="prompt-panel">
+      <div class="phase-row" id="phase-row" hidden>
+        <div class="phase-labels">
+          <span class="phase-item t-mono">Reading</span>
+          <span class="phase-item t-mono">Reasoning</span>
+          <span class="phase-item t-mono">Drafting</span>
+          <span class="phase-item t-mono">Verifying</span>
+        </div>
+        <div class="phase-track"><div class="phase-indicator" id="phase-indicator"></div></div>
+      </div>
+
+      <div class="prompt-toolbar">
+        <button class="tool-btn" type="button" title="Attach" aria-label="Attach">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 11l-9 9a5 5 0 01-7-7l9-9a3.5 3.5 0 015 5l-9 9a2 2 0 01-3-3l8-8"/></svg>
+        </button>
+        <button class="tool-btn" type="button" title="Tools" aria-label="Tools">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.1-3.1a5 5 0 01-6.4 6.4L6 21l-3-3 8.4-8.4a5 5 0 016.4-6.4l-3 3z"/></svg>
+        </button>
+        <span class="prompt-hint">Shift + Enter for a new line</span>
+      </div>
+      <textarea id="prompt-input" rows="1" placeholder="Ask NumPy AI to build something exact."></textarea>
+      <div class="prompt-footer">
+        <button class="send-btn" id="send-btn" type="button">
+          Send
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ARTIFACT DOCK ============ -->
+  <aside class="artifact-dock">
+    <span class="t-eyebrow">Artifact</span>
+    <div class="artifact-card">
+      <div class="artifact-card-head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9DA3AC" stroke-width="1.5"><path d="M14 3v5h5M6 3h8l6 6v12H6z"/></svg>
+        <span class="artifact-filename">forecast_model.py</span>
+      </div>
+      <div class="artifact-meta">Generated 2 min ago · 48 lines</div>
+      <div class="code-preview">
+        <div><span class="kw">def</span> churn_risk(tier, price_delta):</div>
+        <div>&nbsp;&nbsp;base = <span class="num">0.032</span> <span class="kw">if</span> tier == <span class="kw">"enterprise"</span> ...</div>
+        <div>&nbsp;&nbsp;<span class="kw">return</span> base * (<span class="num">1</span> + price_delta)</div>
+      </div>
+    </div>
+    <span class="t-eyebrow">Next</span>
+    <div class="dock-empty">Nothing generated yet for this step.<br>The next artifact will dock here.</div>
+  </aside>
+
+</div>
+
+<!-- ============ COMMAND PALETTE ============ -->
+<div class="palette-overlay" id="palette-overlay" aria-hidden="true">
+  <div class="palette">
+    <input id="palette-input" type="text" placeholder="Type a command…" autocomplete="off" />
+    <div class="palette-list">
+      <div class="palette-item selected" data-confirm="New workspace created">
+        <span class="tick"></span><span>New workspace</span><span class="shortcut">N</span>
+      </div>
+      <div class="palette-item" data-confirm="Reasoning traces expanded">
+        <span class="tick"></span><span>Expand all reasoning</span><span class="shortcut">⇧E</span>
+      </div>
+      <div class="palette-item" data-confirm="Artifact exported">
+        <span class="tick"></span><span>Export current artifact</span><span class="shortcut">⌘E</span>
+      </div>
+      <div class="palette-item" data-confirm="Switched to light surfaces">
+        <span class="tick"></span><span>Switch appearance</span><span class="shortcut">⌘,</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="success-flag" id="success-flag">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg>
+  <span class="label">Done</span>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  const conversation = document.getElementById('conversation');
+  const conversationContent = document.getElementById('conversation-content');
+  const emptyState = document.getElementById('empty-state');
+  const textarea = document.getElementById('prompt-input');
+  const sendBtn = document.getElementById('send-btn');
+  const phaseRow = document.getElementById('phase-row');
+  const phaseIndicator = document.getElementById('phase-indicator');
+  const phaseItems = Array.from(document.querySelectorAll('.phase-item'));
+
+  const topbarActions = document.getElementById('topbar-actions');
+  const confirmBar = document.getElementById('confirm-bar');
+  const deleteBtn = document.getElementById('delete-btn');
+  const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+  const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+  const startNewBtn = document.getElementById('start-new-btn');
+
+  const paletteOverlay = document.getElementById('palette-overlay');
+  const paletteInput = document.getElementById('palette-input');
+  const openPaletteBtn = document.getElementById('open-palette-btn');
+  const successFlag = document.getElementById('success-flag');
+
+  function reducedMotion(){
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function scrollToBottom(){
+    conversation.scrollTop = conversation.scrollHeight;
+  }
+
+  function autosize(){
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 160) + 'px';
+  }
+  textarea.addEventListener('input', autosize);
+
+  function bindReasoningToggle(toggle){
+    toggle.addEventListener('click', function(){
+      const wrap = toggle.closest('.reasoning');
+      const expanded = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!expanded));
+      wrap.classList.toggle('open', !expanded);
+    });
+  }
+  document.querySelectorAll('.reasoning-toggle').forEach(bindReasoningToggle);
+
+  function appendMessage(sender, text, isAI){
+    const wrap = document.createElement('div');
+    wrap.className = 'message' + (isAI ? ' message-ai' : '');
+    const time = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+
+    const meta = document.createElement('div');
+    meta.className = 'message-meta';
+    meta.innerHTML = '<span class="sender">' + sender + '</span><span class="dot">·</span><span class="time t-mono">' + time + '</span>';
+    wrap.appendChild(meta);
+
+    const body = document.createElement('div');
+    body.className = 'message-body';
+    wrap.appendChild(body);
+
+    if (isAI){
+      const reasoning = document.createElement('div');
+      reasoning.className = 'reasoning';
+      reasoning.innerHTML =
+        '<button class="reasoning-toggle" type="button" aria-expanded="false">' +
+          '<svg class="chev" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+          'Show reasoning' +
+        '</button>' +
+        '<div class="reasoning-trace">' +
+          '<div>› Parsed intent — identified the sub-tasks beneath the request.</div>' +
+          '<div>› Cross-checked against the artifact already in the dock.</div>' +
+          '<div>› Drafted a direct answer; confidence high, one assumption flagged.</div>' +
+        '</div>';
+      wrap.appendChild(reasoning);
+      bindReasoningToggle(reasoning.querySelector('.reasoning-toggle'));
+    } else {
+      body.textContent = text;
+    }
+
+    conversationContent.appendChild(wrap);
+    return { wrap: wrap, body: body };
+  }
+
+  function streamText(el, text, done){
+    if (reducedMotion()){
+      el.textContent = text;
+      if (done) done();
+      return;
+    }
+    let i = 0;
+    (function tick(){
+      el.textContent = text.slice(0, i);
+      i++;
+      if (i <= text.length){
+        setTimeout(tick, 13);
+      } else if (done){
+        done();
+      }
+    })();
+  }
+
+  function runPhaseSequence(onDone){
+    phaseRow.hidden = false;
+    let i = 0;
+    const stepTime = reducedMotion() ? 90 : 420;
+
+    function step(){
+      phaseItems.forEach(function(p, idx){ p.classList.toggle('active', idx === i); });
+      phaseIndicator.style.left = (i / (phaseItems.length - 1)) * 100 + '%';
+      if (i < phaseItems.length - 1){
+        i++;
+        setTimeout(step, stepTime);
+      } else {
+        setTimeout(function(){
+          phaseRow.hidden = true;
+          phaseItems.forEach(function(p){ p.classList.remove('active'); });
+          phaseIndicator.style.left = '0%';
+          onDone();
+        }, stepTime);
+      }
+    }
+    step();
+  }
+
+  const AI_RESPONSE = "Here's what I found. I've broken this into three concrete steps and flagged one risk before you act on it — full reasoning is one click away if you want to check it.";
+
+  function sendMessage(){
+    const value = textarea.value.trim();
+    if (!value) return;
+    appendMessage('You', value, false);
+    textarea.value = '';
+    autosize();
+    scrollToBottom();
+
+    runPhaseSequence(function(){
+      const ai = appendMessage('NumPy AI', '', true);
+      scrollToBottom();
+      streamText(ai.body, AI_RESPONSE, scrollToBottom);
+    });
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  textarea.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  /* Delete / empty state */
+  deleteBtn.addEventListener('click', function(){
+    topbarActions.hidden = true;
+    confirmBar.hidden = false;
+  });
+  cancelDeleteBtn.addEventListener('click', function(){
+    confirmBar.hidden = true;
+    topbarActions.hidden = false;
+  });
+  confirmDeleteBtn.addEventListener('click', function(){
+    confirmBar.hidden = true;
+    topbarActions.hidden = false;
+    conversationContent.innerHTML = '';
+    conversationContent.hidden = true;
+    emptyState.hidden = false;
+  });
+  startNewBtn.addEventListener('click', function(){
+    emptyState.hidden = true;
+    conversationContent.hidden = false;
+    textarea.focus();
+  });
+
+  /* Nav items (visual only) */
+  document.querySelectorAll('.nav-item').forEach(function(item){
+    item.addEventListener('click', function(){
+      document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+      item.classList.add('active');
+    });
+  });
+
+  /* Command palette */
+  const paletteItems = Array.from(document.querySelectorAll('.palette-item'));
+  let paletteIndex = 0;
+
+  function updatePaletteSelection(){
+    paletteItems.forEach(function(item, idx){ item.classList.toggle('selected', idx === paletteIndex); });
+  }
+  function openPalette(){
+    paletteOverlay.classList.add('open');
+    paletteOverlay.setAttribute('aria-hidden', 'false');
+    paletteIndex = 0;
+    updatePaletteSelection();
+    paletteInput.value = '';
+    setTimeout(function(){ paletteInput.focus(); }, 10);
+  }
+  function closePalette(){
+    paletteOverlay.classList.remove('open');
+    paletteOverlay.setAttribute('aria-hidden', 'true');
+  }
+  function triggerPaletteItem(item){
+    closePalette();
+    showSuccessFlag(item.dataset.confirm || 'Done');
+  }
+
+  openPaletteBtn.addEventListener('click', openPalette);
+  paletteOverlay.addEventListener('click', function(e){
+    if (e.target === paletteOverlay) closePalette();
+  });
+  paletteItems.forEach(function(item, idx){
+    item.addEventListener('click', function(){ triggerPaletteItem(item); });
+    item.addEventListener('mouseenter', function(){ paletteIndex = idx; updatePaletteSelection(); });
+  });
+
+  document.addEventListener('keydown', function(e){
+    const meta = e.metaKey || e.ctrlKey;
+    if (meta && e.key.toLowerCase() === 'k'){
+      e.preventDefault();
+      if (paletteOverlay.classList.contains('open')) closePalette(); else openPalette();
+      return;
+    }
+    if (!paletteOverlay.classList.contains('open')) return;
+    if (e.key === 'Escape'){ closePalette(); }
+    else if (e.key === 'ArrowDown'){ e.preventDefault(); paletteIndex = (paletteIndex + 1) % paletteItems.length; updatePaletteSelection(); }
+    else if (e.key === 'ArrowUp'){ e.preventDefault(); paletteIndex = (paletteIndex - 1 + paletteItems.length) % paletteItems.length; updatePaletteSelection(); }
+    else if (e.key === 'Enter'){ e.preventDefault(); triggerPaletteItem(paletteItems[paletteIndex]); }
+  });
+
+  /* Success flag */
+  let successTimer;
+  function showSuccessFlag(label){
+    clearTimeout(successTimer);
+    successFlag.querySelector('.label').textContent = label;
+    successFlag.classList.add('show');
+    successTimer = setTimeout(function(){ successFlag.classList.remove('show'); }, 1800);
+  }
+
+  autosize();
+})();
+</script>
+
+</body>
+</html>
