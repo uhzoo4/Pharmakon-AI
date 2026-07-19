@@ -94,6 +94,7 @@ def flash_attention_forward(Q, K, V, mask=None, dropout=0.0, training=False):
     Returns: output O (B,H,S,D), flash_cache dict for backward.
     Flash cache contains: O, LSE, Q, K, V, dropout_p, training flag.
     """
+    # NOTE: Not worth optimizing/toggling below S=256; profiled non-attention overhead as the bottleneck, see walkthrough.md
     B, H, S, D = Q.shape
     scale = 1.0 / np.sqrt(D)
     # Block size for tiling over key/value dimension
@@ -241,7 +242,7 @@ class LayerNorm:
 # Transformer Block with KV Cache, FlashAttention, Checkpointing
 # -----------------------------------------------------------------------------
 class TransformerBlock:
-    def __init__(self, embed_dim, num_heads, ff_dim, dropout=0.1, max_seq_len=256):
+    def __init__(self, embed_dim, num_heads, ff_dim, dropout=0.1, max_seq_len=1024):
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
@@ -302,18 +303,19 @@ class TransformerBlock:
             Q_rot, K_rot = apply_rope(Q, K, self.cos, self.sin, offset=offset)
 
             if kv_cache is not None:
-                K_full = np.concatenate([kv_cache['K'], K_rot], axis=2)  # (B,H,total,D)
-                V_full = np.concatenate([kv_cache['V'], V], axis=2)
+                # Keep at most 63 past tokens to match context window size of 64
+                K_past = kv_cache['K']
+                V_past = kv_cache['V']
+                if K_past.shape[2] > 63:
+                    K_past = K_past[:, :, -63:, :]
+                    V_past = V_past[:, :, -63:, :]
+                K_full = np.concatenate([K_past, K_rot], axis=2)  # (B,H,total,D)
+                V_full = np.concatenate([V_past, V], axis=2)
             else:
                 K_full, V_full = K_rot, V
 
-            # Attention using flash with full sequence (single query)
-            # For simplicity, use manual attention for KV cache (since S is growing)
-            # We can still use flash but here we do a simple scaled dot-product.
-            S_full = K_full.shape[2]
+            # Attention using full sequence (single query)
             scores = np.matmul(Q_rot, K_full.transpose(0, 1, 3, 2)) / np.sqrt(self.head_dim)
-            mask = create_causal_mask(S_full)[-1:, :]   # only last query, all keys
-            scores = scores + mask[None, None, :, :]
             attn_weights = softmax(scores, axis=-1)
             head_out = np.matmul(attn_weights, V_full)   # (B,H,1,D)
             concat = np.ascontiguousarray(head_out.transpose(0, 2, 1, 3).reshape(B, 1, D))
@@ -512,7 +514,7 @@ class TransformerBlock:
 # -----------------------------------------------------------------------------
 class PharmakonTransformer:
     def __init__(self, vocab_size, embed_dim=64, num_heads=4, ff_dim=128,
-                 num_layers=2, max_seq_len=256, dropout=0.1):
+                 num_layers=2, max_seq_len=1024, dropout=0.1):
         self.vocab_size = vocab_size
         self.embed_dim = embed_dim
         self.num_layers = num_layers

@@ -144,10 +144,11 @@ async def generate_text(req: GenerateRequest, request: Request):
 
     async def event_stream():
         try:
-            # 1. Load active weight pointers into global model instance
+            # 1. Instantiate a request-isolated model copy and load weight pointers
             try:
+                local_model = PharmakonTransformer(vocab_size=VOCAB_SIZE)
                 params_dict = weight_manager.get_weights(req.personality)
-                model.load_weights(params_dict)
+                local_model.load_weights(params_dict)
             except Exception as e:
                 yield f"data: {json.dumps({'error': f'Failed to swap weight matrix: {str(e)}'})}\n\n"
                 yield f"data: {json.dumps({'done': True})}\n\n"
@@ -162,14 +163,41 @@ async def generate_text(req: GenerateRequest, request: Request):
             # 3. Instantiate sampler (temperature, blacklist)
             sampler = Sampler(temperature=req.temperature, blacklist=req.blacklist)
 
-            # 4. Autoregressive streaming loop
-            for _ in range(req.max_tokens):
-                # Crop to sequence length 64 (model's training window)
-                cropped_indices = input_indices[-64:]
-                idx_arr = np.array(cropped_indices)
+            # 4. Ingest prompt sequentially using KV Cache
+            # Crop to sequence length 64 (model's training window)
+            prompt_indices = input_indices[-64:]
+            kv_caches = None
+            logits = None
+
+            try:
+                for idx in prompt_indices:
+                    idx_arr = np.array([idx])
+                    logits, kv_caches = local_model.forward(idx_arr, use_cache=True, kv_caches=kv_caches)
+            except Exception as e:
+                yield f"data: {json.dumps({'error': f'KV Cache initialization crash: {str(e)}'})}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                return
+
+            # Sample first token index
+            try:
+                next_idx = sampler.sample(logits)
+                input_indices.append(next_idx)
+            except Exception as e:
+                yield f"data: {json.dumps({'error': f'Sampling crash: {str(e)}'})}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                return
+
+            # Decode character and stream to client
+            next_char = idx_to_char.get(next_idx, " ")
+            yield f"data: {json.dumps({'text': next_char})}\n\n"
+            await asyncio.sleep(0.01)
+
+            # 5. Autoregressive streaming loop
+            for _ in range(req.max_tokens - 1):
+                idx_arr = np.array([next_idx])
 
                 try:
-                    logits = model.forward(idx_arr)
+                    logits, kv_caches = local_model.forward(idx_arr, use_cache=True, kv_caches=kv_caches)
                     assert isinstance(logits, np.ndarray)
                 except Exception as e:
                     yield f"data: {json.dumps({'error': f'Inference crash: {str(e)}'})}\n\n"
@@ -186,7 +214,7 @@ async def generate_text(req: GenerateRequest, request: Request):
                 # Tiny async sleep to prevent CPU blocking + typewriter feel
                 await asyncio.sleep(0.01)
 
-            # 5. Signal end of stream
+            # 6. Signal end of stream
             yield f"data: {json.dumps({'done': True})}\n\n"
 
         finally:
