@@ -73,6 +73,8 @@ class GenerateRequest(BaseModel):
     personality: str
     prompt: str = Field(..., max_length=500)
     temperature: float = Field(default=0.8, ge=0.05, le=2.0)
+    top_k: int = Field(default=50, ge=0, le=100)
+    top_p: float = Field(default=0.9, ge=0.0, le=1.0)
     max_tokens: int = Field(default=200, ge=1, le=500)
     blacklist: list[int] = Field(default_factory=list)
 
@@ -174,8 +176,13 @@ async def generate_text(req: GenerateRequest, request: Request):
                 # Fallback priming token for completely empty prompt
                 input_indices = [char_to_idx["\n"]]
 
-            # 3. Instantiate sampler (temperature, blacklist)
-            sampler = Sampler(temperature=req.temperature, blacklist=req.blacklist)
+            # 3. Instantiate sampler (temperature, top_k, top_p, blacklist)
+            sampler = Sampler(
+                temperature=req.temperature, 
+                top_k=req.top_k, 
+                top_p=req.top_p, 
+                blacklist=req.blacklist
+            )
 
             # 4. Ingest prompt sequentially using KV Cache
             # Crop to sequence length 64 (model's training window)
@@ -198,7 +205,7 @@ async def generate_text(req: GenerateRequest, request: Request):
                 yield f"data: {json.dumps({'done': True})}\n\n"
                 return
             try:
-                next_idx = sampler.sample(logits)
+                next_idx, top_alts = sampler.sample(logits, return_probs=True)
                 input_indices.append(next_idx)
             except Exception as e:
                 yield f"data: {json.dumps({'error': f'Sampling crash: {str(e)}'})}\n\n"
@@ -207,7 +214,11 @@ async def generate_text(req: GenerateRequest, request: Request):
 
             # Decode character and stream to client
             next_char = idx_to_char.get(next_idx, " ")
-            yield f"data: {json.dumps({'text': next_char})}\n\n"
+            
+            # Format alternatives for UI
+            alts_payload = [{"char": idx_to_char.get(alt["idx"], ""), "prob": alt["prob"]} for alt in top_alts]
+            
+            yield f"data: {json.dumps({'text': next_char, 'alts': alts_payload})}\n\n"
             await asyncio.sleep(0.01)
 
             # 5. Autoregressive streaming loop
@@ -222,12 +233,16 @@ async def generate_text(req: GenerateRequest, request: Request):
                     break
 
                 # Sample next token index
-                next_idx = sampler.sample(logits)
+                next_idx, top_alts = sampler.sample(logits, return_probs=True)
                 input_indices.append(next_idx)
 
                 # Decode character and stream to client
                 next_char = idx_to_char.get(next_idx, " ")
-                yield f"data: {json.dumps({'text': next_char})}\n\n"
+                
+                # Format alternatives for UI
+                alts_payload = [{"char": idx_to_char.get(alt["idx"], ""), "prob": alt["prob"]} for alt in top_alts]
+
+                yield f"data: {json.dumps({'text': next_char, 'alts': alts_payload})}\n\n"
 
                 # Tiny async sleep to prevent CPU blocking + typewriter feel
                 await asyncio.sleep(0.01)

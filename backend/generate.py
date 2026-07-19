@@ -4,60 +4,70 @@ class Sampler:
     """
     Statistical engine for next-character selection from logits.
 
-    Applies temperature scaling, user-defined blacklisting, and handles
-    collision fallbacks without any content-based intervention.
+    Implements Temperature scaling, Top-K, and Nucleus (Top-p) sampling.
     """
 
-    def __init__(self, temperature: float = 0.8, blacklist: list | None = None):
-        # Enforce safe upper temperature bound (as per API spec)
-        if temperature <= 0.0:
-            temperature = 0.0
-        self.temperature = min(temperature, 2.0)
+    def __init__(self, temperature: float = 0.8, top_k: int = 50, top_p: float = 0.9, blacklist: list | None = None):
+        self.temperature = max(0.01, min(temperature, 2.0))
+        self.top_k = top_k
+        self.top_p = top_p
         self.blacklist = blacklist or []
 
-    def sample(self, logits: np.ndarray) -> int:
+    def sample(self, logits: np.ndarray, return_probs: bool = False) -> int | tuple[int, list]:
         """
-        Sample a single token index from the last position of the logits array.
-
-        Args:
-            logits: shape (seq_len, vocab_size), raw model outputs.
-
-        Returns:
-            Integer index of the sampled token.
+        Sample a token index and optionally return probability distributions.
         """
-        last_logits = logits[-1]
+        last_logits = logits[-1].copy()
 
-        # 1. Greedy argmax fallback for extremely low temperatures
-        if self.temperature <= 0.05:
-            # Attempt to respect blacklist by finding highest non‑blacklisted index
-            sorted_indices = np.argsort(last_logits)[::-1]
-            for idx in sorted_indices:
-                if idx not in self.blacklist:
-                    return int(idx)
-            # All indices are blacklisted – fallback to pure argmax (no blacklist)
-            return int(np.argmax(last_logits))
+        # Apply blacklist
+        for idx in self.blacklist:
+            if idx < len(last_logits):
+                last_logits[idx] = -float('inf')
 
-        # 2. Temperature scaling and numerically stable softmax
+        # Temperature scaling
         scaled_logits = last_logits / self.temperature
+        
+        # Numerically stable softmax
         shifted = scaled_logits - np.max(scaled_logits)
         probs = np.exp(shifted)
-        denom = np.sum(probs)
-        if denom == 0:                              # edge case (should never happen)
-            return int(np.argmax(last_logits))
-        probs /= denom
+        probs /= np.sum(probs)
 
-        # 3. Apply user blacklist – set blacklisted indices to 0.0
-        for idx in self.blacklist:
-            if idx < len(probs):
-                probs[idx] = 0.0
+        # Top-K Filtering
+        if self.top_k > 0:
+            indices_to_remove = np.argsort(probs)[::-1][self.top_k:]
+            probs[indices_to_remove] = 0.0
+            probs /= np.sum(probs)
 
+        # Top-p (Nucleus) Filtering
+        if self.top_p > 0.0 and self.top_p < 1.0:
+            sorted_indices = np.argsort(probs)[::-1]
+            sorted_probs = probs[sorted_indices]
+            cumulative_probs = np.cumsum(sorted_probs)
+            
+            # Remove tokens with cumulative probability above the threshold
+            cutoff_idx = np.searchsorted(cumulative_probs, self.top_p)
+            if cutoff_idx < len(sorted_indices):
+                indices_to_remove = sorted_indices[cutoff_idx + 1:]
+                probs[indices_to_remove] = 0.0
+                probs /= np.sum(probs)
+
+        # Fallback to pure greedy if probs sum to 0
         total = np.sum(probs)
-
-        # 4. Vowel collision recovery – fallback to greedy on original logits
         if total <= 1e-7:
-            return int(np.argmax(last_logits))
+            next_idx = int(np.argmax(last_logits))
+            if return_probs:
+                return next_idx, []
+            return next_idx
 
-        # 5. Renormalize and sample stochastically
+        # Renormalize and sample
         probs /= total
-        return int(np.random.choice(np.arange(len(probs)), p=probs))
+        next_idx = int(np.random.choice(np.arange(len(probs)), p=probs))
+
+        if not return_probs:
+            return next_idx
+            
+        # Get top 3 alternatives for UI probabilistic visualization
+        top_indices = np.argsort(probs)[::-1][:3]
+        top_alts = [{"idx": int(i), "prob": float(probs[i])} for i in top_indices if i != next_idx]
         
+        return next_idx, top_alts
