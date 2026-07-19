@@ -1,8 +1,19 @@
 import { useState, useCallback } from "react";
 
+export interface AltToken {
+  char: string;
+  prob: number;
+}
+
+export interface Token {
+  char: string;
+  alts?: AltToken[];
+}
+
 export interface Message {
   role: "user" | "model" | "system";
-  content: string;
+  content: string; // for user
+  tokens?: Token[]; // for model
 }
 
 export function usePharmakon() {
@@ -22,7 +33,7 @@ export function usePharmakon() {
     setError(null);
     
     // Create an empty model message placeholder
-    setMessages((prev) => [...prev, { role: "model", content: "" }]);
+    setMessages((prev) => [...prev, { role: "model", content: "", tokens: [] }]);
 
     // Parse blacklist (CSV to array of ASCII codes)
     const blacklist = blacklistStr
@@ -84,9 +95,12 @@ export function usePharmakon() {
             }
             if (data.text) {
               currentText += data.text;
+              const newToken = { char: data.text, alts: data.alts || [] };
               setMessages((prev) => {
                 const next = [...prev];
                 next[next.length - 1].content = currentText;
+                if (!next[next.length - 1].tokens) next[next.length - 1].tokens = [];
+                next[next.length - 1].tokens!.push(newToken);
                 return next;
               });
             }

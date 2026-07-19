@@ -9,7 +9,30 @@ import { SettingsDrawer } from "@/components/matrices/SettingsDrawer";
 import { Button } from "@/components/scalars/Button";
 import { Gnomon } from "@/components/scalars/Gnomon";
 import { cn } from "@/lib/utils";
-import { usePharmakon } from "@/hooks/usePharmakon";
+import { usePharmakon, Token } from "@/hooks/usePharmakon";
+
+const TokenStream = ({ tokens }: { tokens: Token[] }) => {
+  return (
+    <span className="break-words">
+      {tokens.map((t, i) => (
+        <span key={i} className="group relative cursor-crosshair hover:bg-np-semantic-amber/20 transition-colors inline-block whitespace-pre-wrap">
+          {t.char}
+          {t.alts && t.alts.length > 0 && (
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:flex flex-col bg-np-surface-3 border border-np-border-hairline p-2 rounded shadow-xl text-xs z-50 min-w-max pointer-events-none font-mono">
+              <span className="text-np-text-tertiary mb-1 uppercase tracking-widest text-[10px]">Alternatives</span>
+              {t.alts.map((a, j) => (
+                <span key={j} className="flex justify-between gap-4">
+                  <span className="text-np-semantic-amber">'{a.char === ' ' ? '␣' : a.char === '\n' ? '↵' : a.char}'</span>
+                  <span className="text-np-text-secondary">{(a.prob * 100).toFixed(1)}%</span>
+                </span>
+              ))}
+            </span>
+          )}
+        </span>
+      ))}
+    </span>
+  );
+};
 
 export default function Home() {
   const [activePersonality, setActivePersonality] = useState<string | null>(null);
@@ -146,7 +169,7 @@ export default function Home() {
                       // Apply Glitch CSS if temperature is high and it's a model message
                       msg.role === "model" && temperature > 1.5 ? "glitch-text" : ""
                     )}>
-                      {msg.content}
+                      {msg.tokens && msg.tokens.length > 0 ? <TokenStream tokens={msg.tokens} /> : msg.content}
                       {msg.role === "model" && isGenerating && i === messages.length - 1 && (
                         <Gnomon className="ml-2 -mb-0.5 print:hidden" />
                       )}

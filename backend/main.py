@@ -205,7 +205,7 @@ async def generate_text(req: GenerateRequest, request: Request):
                 yield f"data: {json.dumps({'done': True})}\n\n"
                 return
             try:
-                next_idx, top_alts = sampler.sample(logits, return_probs=True)
+                next_idx, top_alts = sampler.sample_with_probs(logits)
                 input_indices.append(next_idx)
             except Exception as e:
                 yield f"data: {json.dumps({'error': f'Sampling crash: {str(e)}'})}\n\n"
@@ -216,7 +216,7 @@ async def generate_text(req: GenerateRequest, request: Request):
             next_char = idx_to_char.get(next_idx, " ")
             
             # Format alternatives for UI
-            alts_payload = [{"char": idx_to_char.get(alt["idx"], ""), "prob": alt["prob"]} for alt in top_alts]
+            alts_payload = [{"char": idx_to_char.get(int(alt["idx"]), ""), "prob": alt["prob"]} for alt in top_alts]
             
             yield f"data: {json.dumps({'text': next_char, 'alts': alts_payload})}\n\n"
             await asyncio.sleep(0.01)
@@ -233,14 +233,14 @@ async def generate_text(req: GenerateRequest, request: Request):
                     break
 
                 # Sample next token index
-                next_idx, top_alts = sampler.sample(logits, return_probs=True)
+                next_idx, top_alts = sampler.sample_with_probs(logits)
                 input_indices.append(next_idx)
 
                 # Decode character and stream to client
                 next_char = idx_to_char.get(next_idx, " ")
                 
                 # Format alternatives for UI
-                alts_payload = [{"char": idx_to_char.get(alt["idx"], ""), "prob": alt["prob"]} for alt in top_alts]
+                alts_payload = [{"char": idx_to_char.get(int(alt["idx"]), ""), "prob": alt["prob"]} for alt in top_alts]
 
                 yield f"data: {json.dumps({'text': next_char, 'alts': alts_payload})}\n\n"
 

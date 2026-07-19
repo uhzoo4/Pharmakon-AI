@@ -13,10 +13,17 @@ class Sampler:
         self.top_p = top_p
         self.blacklist = blacklist or []
 
-    def sample(self, logits: np.ndarray, return_probs: bool = False) -> int | tuple[int, list]:
-        """
-        Sample a token index and optionally return probability distributions.
-        """
+    def sample(self, logits: np.ndarray) -> int:
+        """Sample a token index without returning probabilities."""
+        next_idx, _ = self._sample_core(logits, return_probs=False)
+        return next_idx
+
+    def sample_with_probs(self, logits: np.ndarray) -> tuple[int, list[dict[str, float | int]]]:
+        """Sample a token index and return top 3 alternative probabilities."""
+        return self._sample_core(logits, return_probs=True) # type: ignore
+
+    def _sample_core(self, logits: np.ndarray, return_probs: bool) -> tuple[int, list[dict[str, float | int]]]:
+        """Core sampling logic."""
         last_logits = logits[-1].copy()
 
         # Apply blacklist
@@ -45,7 +52,7 @@ class Sampler:
             cumulative_probs = np.cumsum(sorted_probs)
             
             # Remove tokens with cumulative probability above the threshold
-            cutoff_idx = np.searchsorted(cumulative_probs, self.top_p)
+            cutoff_idx = int(np.searchsorted(cumulative_probs, self.top_p))
             if cutoff_idx < len(sorted_indices):
                 indices_to_remove = sorted_indices[cutoff_idx + 1:]
                 probs[indices_to_remove] = 0.0
@@ -55,16 +62,14 @@ class Sampler:
         total = np.sum(probs)
         if total <= 1e-7:
             next_idx = int(np.argmax(last_logits))
-            if return_probs:
-                return next_idx, []
-            return next_idx
+            return next_idx, []
 
         # Renormalize and sample
         probs /= total
         next_idx = int(np.random.choice(np.arange(len(probs)), p=probs))
 
         if not return_probs:
-            return next_idx
+            return next_idx, []
             
         # Get top 3 alternatives for UI probabilistic visualization
         top_indices = np.argsort(probs)[::-1][:3]

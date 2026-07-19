@@ -29,6 +29,11 @@ export const PERSONALITIES = [
     id: "the_assistant",
     title: "The AI Assistant",
     description: "A helpful instruction-tuned AI model trained to answer questions (Claude-style SFT).",
+  },
+  {
+    id: "the_pinnacle",
+    title: "The Pinnacle",
+    description: "Hyper-scaled 4-layer architecture trained on massive internet conversational data.",
   }
 ];
 
