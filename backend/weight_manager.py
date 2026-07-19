@@ -140,13 +140,22 @@ class WeightManager:
         """Return the weight dictionary for the requested personality.
         This is an O(1) in‑memory lookup; the caller can use the reference
         to instantly swap the model's active parameters."""
+        mapped_personality = personality
         if personality not in self.personalities:
+            mapping = {
+                "kafkaesque": "The Trial",
+                "camus_stranger": "Beyond Good and Evil",
+                "dark_romance": "Wuthering Heights"
+            }
+            mapped_personality = mapping.get(personality, personality)
+
+        if mapped_personality not in self.personalities:
             available = list(self.personalities.keys())
             raise KeyError(
-                f"Unknown personality: '{personality}'. "
+                f"Unknown personality: '{personality}' (mapped to '{mapped_personality}'). "
                 f"Available: {available}"
             )
-        return self.personalities[personality]
+        return self.personalities[mapped_personality]
 
     def list_personalities(self) -> List[str]:
         """Return a sorted list of all loaded personality names."""
