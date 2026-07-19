@@ -45,6 +45,9 @@ PERSONALITY_TEXTS = {
         "Therèse Raquin.txt",
         "White nights.txt",
     ],
+    "modern_conversation": [
+        "modern_conversation.txt",
+    ],
 }
 
 # Training hyperparameters

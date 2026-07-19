@@ -20,6 +20,11 @@ export const PERSONALITIES = [
     title: "The Doomed", 
     description: "Feverish, emotionally volatile, and deeply existential.",
   },
+  {
+    id: "modern_conversation",
+    title: "The Casual Talker",
+    description: "Speaks in modern, conversational, everyday English with normal pacing and slang.",
+  }
 ];
 
 function CarouselCard({ person, index, hoveredIndex, setHoveredIndex, onSelect }: any) {
