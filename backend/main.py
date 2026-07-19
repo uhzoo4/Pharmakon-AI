@@ -189,6 +189,10 @@ async def generate_text(req: GenerateRequest, request: Request):
                 return
 
             # Sample first token index
+            if logits is None:
+                yield f"data: {json.dumps({'error': 'Failed to compute initial logits'})}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                return
             try:
                 next_idx = sampler.sample(logits)
                 input_indices.append(next_idx)

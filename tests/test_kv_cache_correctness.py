@@ -47,6 +47,7 @@ def test_exact_logits():
         logits_c, kv_caches = model.forward(idx_arr, use_cache=True, kv_caches=kv_caches)
         
     sampler = Sampler(temperature=0.8)
+    assert logits_c is not None, "Logits cannot be None"
     next_idx = sampler.sample(logits_c)
     input_c.append(next_idx)
     input_nc.append(next_idx)

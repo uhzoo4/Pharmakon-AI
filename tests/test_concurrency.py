@@ -111,11 +111,13 @@ def main():
     def worker(name, model_instance):
         outputs = []
         kv_caches = None
+        logits = None
         # Ingest prompt
         for idx in prompt[-64:]:
             logits, kv_caches = model_instance.forward(np.array([idx]), use_cache=True, kv_caches=kv_caches)
         # Generate 50 tokens
         sampler = Sampler(temperature=0.8)
+        assert logits is not None, "Logits cannot be None"
         next_idx = sampler.sample(logits)
         outputs.append(next_idx)
         for _ in range(50):
