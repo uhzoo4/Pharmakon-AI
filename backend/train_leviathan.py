@@ -104,7 +104,7 @@ def train_leviathan(text_data: str):
         num_heads=16,     # Huge multi-head routing
         ff_dim=2048,      # Scaled down from 4096 to prevent 8GB OOM crashes
         num_layers=12,    # Deepest architecture yet
-        max_seq_len=512   # Massive context window
+        max_seq_len=256   # Dropped from 512 to save N^2 attention memory in the backward pass
     )
     
     target_weights = WEIGHTS_DIR / "the_leviathan.npz"
@@ -116,8 +116,8 @@ def train_leviathan(text_data: str):
         data=encoded_data, 
         char_to_idx=None, 
         epochs=3,         # 3 epochs on massive data
-        batch_size=2,     # Micro-batching to guarantee 8GB RAM safety!
-        seq_len=512,      # Massive context window
+        batch_size=1,     # Extreme Micro-batching (1) to guarantee 8GB RAM safety!
+        seq_len=256,      # Reduced context window to survive backprop
         lr=2e-4, 
         weight_decay=0.01, 
         warmup_steps=200, 

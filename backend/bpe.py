@@ -103,11 +103,18 @@ class BPETokenizer:
         pre_tokens = PRE_TOKEN_RE.findall(text)
         encoded_ids = []
         
+        # Cache unique word encodings to massively speed up encoding of large datasets
+        cache = {}
+        
         for pre_token in pre_tokens:
-            tokens = list(pre_token)
-            # Replay merges in exact order they were learned
-            for pair, merged in self.merges.items():
-                tokens = self._merge_tokens(tokens, pair, merged)
+            if pre_token not in cache:
+                tokens = list(pre_token)
+                # Replay merges in exact order they were learned
+                for pair, merged in self.merges.items():
+                    tokens = self._merge_tokens(tokens, pair, merged)
+                cache[pre_token] = tokens
+            else:
+                tokens = cache[pre_token]
                 
             for t in tokens:
                 # Fallback to <UNK> token index 0 if something went wrong
