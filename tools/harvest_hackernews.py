@@ -1,13 +1,18 @@
 import sys
-import time
-import requests
+import asyncio
 from pathlib import Path
+
+def install_deps():
+    try:
+        import aiohttp
+    except ImportError:
+        import subprocess
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "aiohttp"])
 
 def clean_text(text: str) -> str:
     """Strip everything except our 97-character vocab and remove HTML."""
     if not text:
         return ""
-    # Basic HTML removal since HN API returns raw HTML for comments
     text = text.replace("<p>", "\n\n").replace("&#x27;", "'").replace("&quot;", '"').replace("&gt;", ">").replace("&lt;", "<").replace("&#x2F;", "/")
     
     valid_chars = set(["\n", "\t"] + [chr(i) for i in range(32, 127)])
@@ -17,58 +22,81 @@ def clean_text(text: str) -> str:
         cleaned = cleaned.replace("\n\n\n", "\n\n")
     return cleaned.strip()
 
-def harvest_hackernews():
-    print("Connecting to Hacker News API (No Auth Required)...")
+async def fetch_item(session, item_id, semaphore):
+    async with semaphore:
+        try:
+            async with session.get(f"https://hacker-news.firebaseio.com/v0/item/{item_id}.json", timeout=10) as resp:
+                if resp.status == 200:
+                    return await resp.json()
+        except Exception:
+            pass
+    return None
+
+async def process_story(session, story_id, semaphore, out_file):
+    story_data = await fetch_item(session, story_id, semaphore)
+    if not story_data: return 0
+    
+    title = clean_text(story_data.get("title", ""))
+    kids = story_data.get("kids", [])
+    
+    if not title or not kids: return 0
+    
+    # Fetch up to 5 top level comments for this story
+    top_kids = kids[:5]
+    tasks = [fetch_item(session, kid_id, semaphore) for kid_id in top_kids]
+    comments = await asyncio.gather(*tasks)
+    
+    harvested = 0
+    for comment_data in comments:
+        if not comment_data: continue
+        body = clean_text(comment_data.get("text", ""))
+        if not body or body == "[deleted]": continue
+        
+        # Write format
+        out_file.write(f"User: {title}\nAssistant: {body}\n\n")
+        harvested += len(title) + len(body)
+        
+    return harvested
+
+async def harvest_hackernews_async():
+    print("Connecting to Hacker News API (No Auth Required) for MASSIVE SCALE HARVEST...")
     
     DATA_DIR = Path(__file__).resolve().parents[1] / "data"
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = DATA_DIR / "reddit_corpus.txt" # We append to the same file so train_continuous picks it up
+    out_path = DATA_DIR / "reddit_corpus.txt"
     
-    # 1. Get Top Stories
-    try:
-        res = requests.get("https://hacker-news.firebaseio.com/v0/topstories.json")
-        res.raise_for_status()
-        top_ids = res.json()[:30] # Get top 30 stories
-    except Exception as e:
-        print(f"[ERROR] Failed to fetch top stories: {e}")
-        return
+    import aiohttp
+    
+    async with aiohttp.ClientSession() as session:
+        # Get all 500 top stories
+        async with session.get("https://hacker-news.firebaseio.com/v0/topstories.json") as resp:
+            top_ids = await resp.json()
+            
+        print(f"Discovered {len(top_ids)} live threads. Booting up massive parallel ingestion...")
+        
+        # Limit concurrent connections to avoid crashing or getting IP banned (Hacker News Firebase allows quite a bit)
+        semaphore = asyncio.Semaphore(50)
+        
+        total_chars = 0
+        with open(out_path, "a", encoding="utf-8") as f:
+            tasks = [process_story(session, sid, semaphore, f) for sid in top_ids]
+            
+            # Use asyncio.as_completed for progress bar effect
+            completed = 0
+            for coro in asyncio.as_completed(tasks):
+                chars = await coro
+                total_chars += chars
+                completed += 1
+                if completed % 50 == 0:
+                    print(f"Processed {completed}/500 threads... Harvested {total_chars} characters so far.")
 
-    print(f"Harvesting {len(top_ids)} live threads from Hacker News...")
+        print(f"[OK] Massive Harvest Complete! {total_chars} total characters appended to {out_path}")
 
-    with open(out_path, "a", encoding="utf-8") as f:
-        for story_id in top_ids:
-            try:
-                story_res = requests.get(f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json")
-                story_data = story_res.json()
-                
-                title = clean_text(story_data.get("title", ""))
-                kids = story_data.get("kids", [])
-                
-                if not title or not kids:
-                    continue
-                    
-                # 2. Get the top comment
-                top_comment_id = kids[0]
-                comment_res = requests.get(f"https://hacker-news.firebaseio.com/v0/item/{top_comment_id}.json")
-                comment_data = comment_res.json()
-                
-                body = clean_text(comment_data.get("text", ""))
-                
-                if not body or body == "[deleted]":
-                    continue
-                    
-                # We format the post title as the User prompt
-                # And the top comment as the Assistant reply
-                f.write(f"User: {title}\nAssistant: {body}\n\n")
-                print(f"-> Harvested thread: {title[:50]}...")
-                
-                # Be polite to the API
-                time.sleep(0.5)
-            except Exception as e:
-                print(f"Skipping thread {story_id} due to error: {e}")
-                continue
-
-    print(f"[OK] Hacker News harvest complete! Data appended to {out_path}")
+def harvest_hackernews():
+    install_deps()
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    asyncio.run(harvest_hackernews_async())
 
 if __name__ == "__main__":
     harvest_hackernews()

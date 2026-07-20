@@ -52,21 +52,21 @@ def load_and_merge_data() -> str:
 def continuous_fine_tune(text_data: str):
     print("--- 3. CONTINUOUS FINE-TUNING ---")
     
-    # Same architecture as the_assistant.npz
+    # Hyper-scaled architecture for the_pinnacle.npz
     VOCAB_CHARS = ["\n", "\t"] + [chr(i) for i in range(32, 127)]
     char_to_idx = {c: i for i, c in enumerate(VOCAB_CHARS)}
     VOCAB_SIZE = len(VOCAB_CHARS)
     
     model = PharmakonTransformer(
         vocab_size=VOCAB_SIZE, 
-        embed_dim=64, 
-        num_heads=4, 
-        ff_dim=128, 
-        num_layers=2, 
-        max_seq_len=64
+        embed_dim=128, 
+        num_heads=8, 
+        ff_dim=256, 
+        num_layers=4, 
+        max_seq_len=128
     )
     
-    target_weights = WEIGHTS_DIR / "the_assistant.npz"
+    target_weights = WEIGHTS_DIR / "the_pinnacle.npz"
     if not target_weights.exists():
         print(f"[ERROR] Target model {target_weights} not found to fine-tune!")
         sys.exit(1)
@@ -99,9 +99,9 @@ def continuous_fine_tune(text_data: str):
         model=model, 
         data=text_data, 
         char_to_idx=char_to_idx, 
-        epochs=3, # Fast adaptive epochs
-        batch_size=16, 
-        seq_len=64, 
+        epochs=20, # Hyper-stress testing
+        batch_size=32, # Increased batch size
+        seq_len=128, # Double context window for the_pinnacle
         lr=5e-6, # Extremely low learning rate to prevent shock without Adam state
         weight_decay=0.01, 
         warmup_steps=5, 

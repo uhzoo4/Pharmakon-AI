@@ -34,6 +34,11 @@ export const PERSONALITIES = [
     id: "the_pinnacle",
     title: "The Pinnacle",
     description: "Hyper-scaled 4-layer architecture trained on massive internet conversational data.",
+  },
+  {
+    id: "the_leviathan",
+    title: "The Leviathan",
+    description: "Multi-gigabyte 12-layer monolith. Stresses hardware limits with 10M+ characters of internet data.",
   }
 ];
 
