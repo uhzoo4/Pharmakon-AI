@@ -167,8 +167,15 @@ def train(
             # Update weights and learning rate
             optimizer.step()
             scheduler.step()
-
+            
             epoch_loss += loss
+
+            if (step + 1) % 10 == 0 or step == 0:
+                print(f"Epoch {epoch} | Step {step+1}/{steps_per_epoch} | Loss: {loss:.4f} | LR: {scheduler.current_lr:.2e}")
+                
+            if (step + 1) % 1000 == 0:
+                print(f"[System] Auto-saving checkpoint at step {step+1}...")
+                model.save("backend/weights/the_leviathan_checkpoint.npz")
 
         avg_loss = epoch_loss / steps_per_epoch
         print(f"Epoch {epoch:2d} | loss: {avg_loss:.4f} | lr: {optimizer.lr:.2e}")
