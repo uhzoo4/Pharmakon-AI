@@ -99,6 +99,8 @@ def train(model, data, char_to_idx, epochs=50, batch_size=32, seq_len=64,
     optimizer = AdamW(model, lr=lr, weight_decay=weight_decay)
     scheduler = CosineDecayWithWarmup(optimizer, warmup_steps, total_batches)
 
+    epoch_losses = []
+
     print(f"Training {epochs} epochs, {steps_per_epoch} batches/epoch, total steps {total_batches}")
 
     for epoch in range(1, epochs+1):
@@ -151,5 +153,7 @@ def train(model, data, char_to_idx, epochs=50, batch_size=32, seq_len=64,
 
         avg_loss = epoch_loss / steps_per_epoch
         print(f"Epoch {epoch:2d} | loss: {avg_loss:.4f} | lr: {optimizer.lr:.2e}")
-
+        epoch_losses.append(avg_loss)
+        
     print("Training complete.")
+    return epoch_losses

@@ -35,12 +35,11 @@ export function usePharmakon() {
     // Create an empty model message placeholder
     setMessages((prev) => [...prev, { role: "model", content: "", tokens: [] }]);
 
-    // Parse blacklist (CSV to array of ASCII codes)
+    // Parse blacklist (CSV to array of characters)
     const blacklist = blacklistStr
       .split(",")
       .map((c) => c.trim())
-      .filter((c) => c.length === 1)
-      .map((c) => c.charCodeAt(0));
+      .filter((c) => c.length === 1);
 
     try {
       const response = await fetch("http://127.0.0.1:8000/api/generate", {

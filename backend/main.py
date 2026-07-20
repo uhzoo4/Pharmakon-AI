@@ -17,7 +17,7 @@ import train
 
 from weight_manager import WeightManager
 from transformer import PharmakonTransformer
-from generate import Sampler
+from generate import Sampler, EntmaxSampler
 
 app = FastAPI(title="φάρμακον (Pharmakon) Backend")
 
@@ -76,7 +76,7 @@ class GenerateRequest(BaseModel):
     top_k: int = Field(default=50, ge=0, le=100)
     top_p: float = Field(default=0.9, ge=0.0, le=1.0)
     max_tokens: int = Field(default=200, ge=1, le=500)
-    blacklist: list[int] = Field(default_factory=list)
+    blacklist: list[str] = Field(default_factory=list)
 
 
 class TrainRequest(BaseModel):
@@ -177,11 +177,12 @@ async def generate_text(req: GenerateRequest, request: Request):
                 input_indices = [char_to_idx["\n"]]
 
             # 3. Instantiate sampler (temperature, top_k, top_p, blacklist)
-            sampler = Sampler(
+            blacklist_indices = [char_to_idx[c] for c in req.blacklist if c in char_to_idx]
+            sampler = EntmaxSampler(
                 temperature=req.temperature, 
                 top_k=req.top_k, 
                 top_p=req.top_p, 
-                blacklist=req.blacklist
+                blacklist=blacklist_indices
             )
 
             # 4. Ingest prompt sequentially using KV Cache

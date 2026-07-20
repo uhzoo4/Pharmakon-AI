@@ -139,8 +139,8 @@ def flash_attention_forward(Q, K, V, mask=None, dropout=0.0, training=False):
         m = m_new
         L = L_new
 
-    # Final divide by L
-    O = O / L[..., None]
+    # Final divide by L (Clamp to prevent NaNs if all scores masked)
+    O = O / np.maximum(L[..., None], 1e-12)
     # LSE = m + log(L)
     LSE = m + np.log(np.maximum(L, 1e-20))
     flash_cache = {'O': O, 'LSE': LSE, 'Q': Q, 'K': K, 'V': V,
