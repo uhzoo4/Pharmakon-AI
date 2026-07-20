@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import numpy as np
 from pathlib import Path
 import subprocess
@@ -54,23 +55,48 @@ def load_massive_dataset() -> str:
             break
             
     final_text = "\n\n".join(combined)
+    
+    # Inject the documentary if the user adds it!
+    doc_path = DATA_DIR / "documentary.txt"
+    if doc_path.exists():
+        print("[System] Legendary Artifact Detected: Injecting documentary.txt into the training data!")
+        with open(doc_path, 'r', encoding='utf-8') as f:
+            doc_text = f.read()
+            # Strip timestamps (e.g. 00:00:00.400)
+            doc_text = re.sub(r'\d{2}:\d{2}:\d{2}\.\d{3}\s*', '', doc_text)
+            # Strip bracketed tags (e.g. [music])
+            doc_text = re.sub(r'\[.*?\]\s*', '', doc_text)
+            
+            cleaned_doc = "".join([c for c in doc_text if c in valid_chars])
+            final_text = cleaned_doc + "\n\n" + final_text
+            
     print(f"[System] Successfully prepared {len(final_text):,} characters of ultra-clean data.")
     return final_text
 
 def train_leviathan(text_data: str):
     print("--- 2. BOOTING THE LEVIATHAN ---")
     
-    VOCAB_CHARS = ["\n", "\t"] + [chr(i) for i in range(32, 127)]
-    char_to_idx = {c: i for i, c in enumerate(VOCAB_CHARS)}
-    VOCAB_SIZE = len(VOCAB_CHARS)
+    print("--- 2. TRAINING BPE TOKENIZER ---")
+    from backend.bpe import BPETokenizer
+    
+    bpe = BPETokenizer()
+    bpe.train(text_data, vocab_size=2000)
+    
+    bpe_path = WEIGHTS_DIR / "leviathan_bpe.json"
+    bpe.save(str(bpe_path))
+    print(f"[System] BPE Tokenizer saved to {bpe_path}")
+    
+    encoded_data = bpe.encode(text_data)
+    VOCAB_SIZE = len(bpe.vocab)
     
     # THE LEVIATHAN CONFIGURATION (8GB RAM SAFE MODE)
-    print("""
+    print(f\"\"\"
     [WARNING] INITIALIZING THE LEVIATHAN (8GB SAFE MODE)
     Architecture: 12 Layers, 1024 Embed Dim, 16 Heads, 2048 FF Dim, 512 Context Window.
+    Vocab Size: {VOCAB_SIZE} (BPE Sub-words)
     This pure NumPy instantiation has been carefully tuned to consume ~3-4 GB of RAM,
     ensuring it fully maximizes your hardware without crashing your 8GB system!
-    """)
+    \"\"\")
     
     model = PharmakonTransformer(
         vocab_size=VOCAB_SIZE, 
@@ -83,13 +109,13 @@ def train_leviathan(text_data: str):
     
     target_weights = WEIGHTS_DIR / "the_leviathan.npz"
     
-    print(f"[System] Unleashing training cycle on {len(text_data):,} characters...")
+    print(f"[System] Unleashing training cycle on {len(encoded_data):,} BPE tokens...")
     
     history = train_module.train(
         model=model, 
-        data=text_data, 
-        char_to_idx=char_to_idx, 
-        epochs=3,         # 3 epochs on 10 million characters
+        data=encoded_data, 
+        char_to_idx=None, 
+        epochs=3,         # 3 epochs on massive data
         batch_size=2,     # Micro-batching to guarantee 8GB RAM safety!
         seq_len=512,      # Massive context window
         lr=2e-4, 

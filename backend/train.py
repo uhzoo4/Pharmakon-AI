@@ -87,11 +87,30 @@ def get_batch(data, batch_size, seq_len):
 # -----------------------------------------------------------------------------
 # Training loop
 # -----------------------------------------------------------------------------
-def train(model, data, char_to_idx, epochs=50, batch_size=32, seq_len=64,
-          lr=3e-4, weight_decay=0.01, warmup_steps=100, use_checkpoint=True):
-    vocab_size = len(char_to_idx)
-    # Prepare integer data
-    encoded = np.array([char_to_idx[ch] for ch in data], dtype=np.int32)
+def train(
+    model, 
+    data, # Can be str (raw text) or List[int] (BPE tokens)
+    char_to_idx=None, # Only needed if data is str
+    epochs=10, 
+    batch_size=16, 
+    seq_len=64, 
+    lr=1e-3, 
+    weight_decay=0.01,
+    warmup_steps=100,
+    use_checkpoint=True
+):
+    """
+    Trains the PharmakonTransformer.
+    """
+    if isinstance(data, str):
+        if char_to_idx is None:
+            raise ValueError("char_to_idx required if data is a string.")
+        print("[Dataset] Converting text to character IDs...")
+        encoded = np.array([char_to_idx[c] for c in data], dtype=np.int32)
+    else:
+        print("[Dataset] Using pre-encoded BPE tokens...")
+        encoded = np.array(data, dtype=np.int32)
+
     total_batches = (len(encoded) // (batch_size * seq_len)) * epochs
     steps_per_epoch = len(encoded) // (batch_size * seq_len)
 

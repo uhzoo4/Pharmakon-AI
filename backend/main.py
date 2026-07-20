@@ -18,6 +18,17 @@ import train
 from weight_manager import WeightManager
 from transformer import PharmakonTransformer
 from generate import Sampler, EntmaxSampler
+from bpe import BPETokenizer
+
+bpe_tokenizer = None
+def get_bpe():
+    global bpe_tokenizer
+    if bpe_tokenizer is None:
+        bpe_path = Path(__file__).parent / "weights" / "leviathan_bpe.json"
+        if bpe_path.exists():
+            bpe_tokenizer = BPETokenizer()
+            bpe_tokenizer.load(str(bpe_path))
+    return bpe_tokenizer
 
 app = FastAPI(title="φάρμακον (Pharmakon) Backend")
 
@@ -156,7 +167,13 @@ async def generate_text(req: GenerateRequest, request: Request):
                     async with personality_models_lock:
                         # Double-check inside lock
                         if req.personality not in personality_models:
-                            m = PharmakonTransformer(vocab_size=VOCAB_SIZE)
+                            # Use BPE vocab size for leviathan
+                            target_vocab_size = VOCAB_SIZE
+                            if req.personality == "the_leviathan":
+                                bpe = get_bpe()
+                                if bpe: target_vocab_size = len(bpe.vocab)
+                                
+                            m = PharmakonTransformer(vocab_size=target_vocab_size)
                             params_dict = weight_manager.get_weights(req.personality)
                             m.load_weights(params_dict)
                             personality_models[req.personality] = m
@@ -171,13 +188,21 @@ async def generate_text(req: GenerateRequest, request: Request):
             if req.personality == "the_assistant":
                 formatted_prompt = f"User: {req.prompt.strip()}\nAssistant:"
 
-            input_indices = encode_prompt(formatted_prompt)
-            if not input_indices:
-                # Fallback priming token for completely empty prompt
-                input_indices = [char_to_idx["\n"]]
+            if req.personality == "the_leviathan":
+                bpe = get_bpe()
+                input_indices = bpe.encode(formatted_prompt) if bpe else encode_prompt(formatted_prompt)
+                if not input_indices: input_indices = [bpe.vocab_to_id.get("\n", 0)] if bpe else [char_to_idx["\n"]]
+            else:
+                input_indices = encode_prompt(formatted_prompt)
+                if not input_indices: input_indices = [char_to_idx["\n"]]
 
             # 3. Instantiate sampler (temperature, top_k, top_p, blacklist)
-            blacklist_indices = [char_to_idx[c] for c in req.blacklist if c in char_to_idx]
+            if req.personality == "the_leviathan":
+                bpe = get_bpe()
+                blacklist_indices = [bpe.vocab_to_id.get(c, 0) for c in req.blacklist if bpe and c in bpe.vocab_to_id]
+            else:
+                blacklist_indices = [char_to_idx[c] for c in req.blacklist if c in char_to_idx]
+                
             sampler = EntmaxSampler(
                 temperature=req.temperature, 
                 top_k=req.top_k, 
@@ -213,11 +238,13 @@ async def generate_text(req: GenerateRequest, request: Request):
                 yield f"data: {json.dumps({'done': True})}\n\n"
                 return
 
-            # Decode character and stream to client
-            next_char = idx_to_char.get(next_idx, " ")
-            
-            # Format alternatives for UI
-            alts_payload = [{"char": idx_to_char.get(int(alt["idx"]), ""), "prob": alt["prob"]} for alt in top_alts]
+            # Decode token and stream to client
+            if req.personality == "the_leviathan" and get_bpe():
+                next_char = get_bpe().decode([next_idx])
+                alts_payload = [{"char": get_bpe().decode([int(alt["idx"])]), "prob": alt["prob"]} for alt in top_alts]
+            else:
+                next_char = idx_to_char.get(next_idx, " ")
+                alts_payload = [{"char": idx_to_char.get(int(alt["idx"]), ""), "prob": alt["prob"]} for alt in top_alts]
             
             yield f"data: {json.dumps({'text': next_char, 'alts': alts_payload})}\n\n"
             await asyncio.sleep(0.01)
@@ -237,11 +264,13 @@ async def generate_text(req: GenerateRequest, request: Request):
                 next_idx, top_alts = sampler.sample_with_probs(logits)
                 input_indices.append(next_idx)
 
-                # Decode character and stream to client
-                next_char = idx_to_char.get(next_idx, " ")
-                
-                # Format alternatives for UI
-                alts_payload = [{"char": idx_to_char.get(int(alt["idx"]), ""), "prob": alt["prob"]} for alt in top_alts]
+                # Decode token and stream to client
+                if req.personality == "the_leviathan" and get_bpe():
+                    next_char = get_bpe().decode([next_idx])
+                    alts_payload = [{"char": get_bpe().decode([int(alt["idx"])]), "prob": alt["prob"]} for alt in top_alts]
+                else:
+                    next_char = idx_to_char.get(next_idx, " ")
+                    alts_payload = [{"char": idx_to_char.get(int(alt["idx"]), ""), "prob": alt["prob"]} for alt in top_alts]
 
                 yield f"data: {json.dumps({'text': next_char, 'alts': alts_payload})}\n\n"
 
