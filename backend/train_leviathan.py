@@ -17,13 +17,13 @@ DATA_DIR = BASE_DIR / "data"
 
 def install_datasets():
     try:
-        import datasets
+        import datasets # type: ignore
     except ImportError:
         print("[System] Installing HuggingFace datasets library for massive data stream...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "datasets"])
 
 def load_massive_dataset() -> str:
-    from datasets import load_dataset
+    from datasets import load_dataset # type: ignore
     print("--- 1. HARVESTING GIGABYTES OF DATA ---")
     print("Connecting to HuggingFace to stream timdettmers/openassistant-guanaco...")
     
@@ -41,7 +41,7 @@ def load_massive_dataset() -> str:
     print(f"[System] Filtering {len(dataset)} conversations down to {target_chars:,} characters...")
     
     for item in dataset:
-        text = item["text"]
+        text = item["text"] # type: ignore
         text = text.replace("### Human:", "User:").replace("### Assistant:", "Assistant:")
         cleaned = "".join([c for c in text if c in valid_chars])
         
@@ -90,13 +90,13 @@ def train_leviathan(text_data: str):
     VOCAB_SIZE = len(bpe.vocab)
     
     # THE LEVIATHAN CONFIGURATION (8GB RAM SAFE MODE)
-    print(f\"\"\"
+    print(f"""
     [WARNING] INITIALIZING THE LEVIATHAN (8GB SAFE MODE)
     Architecture: 12 Layers, 1024 Embed Dim, 16 Heads, 2048 FF Dim, 512 Context Window.
     Vocab Size: {VOCAB_SIZE} (BPE Sub-words)
     This pure NumPy instantiation has been carefully tuned to consume ~3-4 GB of RAM,
     ensuring it fully maximizes your hardware without crashing your 8GB system!
-    \"\"\")
+    """)
     
     model = PharmakonTransformer(
         vocab_size=VOCAB_SIZE, 

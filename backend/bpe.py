@@ -64,7 +64,7 @@ class BPETokenizer:
             if not pair_freq:
                 break
                 
-            best_pair = max(pair_freq, key=pair_freq.get)
+            best_pair = max(pair_freq.keys(), key=lambda k: pair_freq[k])
             merged_token = best_pair[0] + best_pair[1]
             
             for word, tokens in word_splits.items():

@@ -239,9 +239,10 @@ async def generate_text(req: GenerateRequest, request: Request):
                 return
 
             # Decode token and stream to client
-            if req.personality == "the_leviathan" and get_bpe():
-                next_char = get_bpe().decode([next_idx])
-                alts_payload = [{"char": get_bpe().decode([int(alt["idx"])]), "prob": alt["prob"]} for alt in top_alts]
+            bpe = get_bpe()
+            if req.personality == "the_leviathan" and bpe:
+                next_char = bpe.decode([next_idx])
+                alts_payload = [{"char": bpe.decode([int(alt["idx"])]), "prob": alt["prob"]} for alt in top_alts]
             else:
                 next_char = idx_to_char.get(next_idx, " ")
                 alts_payload = [{"char": idx_to_char.get(int(alt["idx"]), ""), "prob": alt["prob"]} for alt in top_alts]
@@ -265,9 +266,10 @@ async def generate_text(req: GenerateRequest, request: Request):
                 input_indices.append(next_idx)
 
                 # Decode token and stream to client
-                if req.personality == "the_leviathan" and get_bpe():
-                    next_char = get_bpe().decode([next_idx])
-                    alts_payload = [{"char": get_bpe().decode([int(alt["idx"])]), "prob": alt["prob"]} for alt in top_alts]
+                bpe = get_bpe()
+                if req.personality == "the_leviathan" and bpe:
+                    next_char = bpe.decode([next_idx])
+                    alts_payload = [{"char": bpe.decode([int(alt["idx"])]), "prob": alt["prob"]} for alt in top_alts]
                 else:
                     next_char = idx_to_char.get(next_idx, " ")
                     alts_payload = [{"char": idx_to_char.get(int(alt["idx"]), ""), "prob": alt["prob"]} for alt in top_alts]
