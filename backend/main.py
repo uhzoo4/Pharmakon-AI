@@ -10,8 +10,9 @@ import sys
 import time
 import uuid
 
-# Adjust sys.path to resolve root-level imports
+# Adjust sys.path to resolve root-level and sibling imports
 sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent))
 from clean_corpus import clean_text
 import train
 
