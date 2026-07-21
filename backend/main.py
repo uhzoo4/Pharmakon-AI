@@ -81,7 +81,7 @@ active_clients_lock = asyncio.Lock()
 # Pydantic schema – strict resource‑protection bounds only
 # -------------------------------------------------------------------
 class GenerateRequest(BaseModel):
-    personality: str
+    personality: str = Field(..., min_length=2, max_length=64, pattern=r"^[a-zA-Z0-9_ -]+$")
     prompt: str = Field(..., max_length=500)
     temperature: float = Field(default=0.8, ge=0.05, le=2.0)
     top_k: int = Field(default=50, ge=0, le=100)
