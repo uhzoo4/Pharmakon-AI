@@ -35,10 +35,32 @@ Usage constraints:
 
 # Classic Philosophy and Greek literature plain text mirrors on Project Gutenberg
 GUTENBERG_BOOKS = {
+    # Core Greek Philosophy
     "Plato_Republic": "https://www.gutenberg.org/cache/epub/1497/pg1497.txt",
     "Aristotle_Politics": "https://www.gutenberg.org/cache/epub/6762/pg6762.txt",
     "Marcus_Aurelius_Meditations": "https://www.gutenberg.org/cache/epub/6828/pg6828.txt",
-    "Plato_Apology_Crito_Phaedo": "https://www.gutenberg.org/cache/epub/1656/pg1656.txt"
+    "Plato_Apology_Crito_Phaedo": "https://www.gutenberg.org/cache/epub/1656/pg1656.txt",
+    "Plato_Symposium": "https://www.gutenberg.org/cache/epub/1600/pg1600.txt",
+    
+    # Modern & Existential Philosophy
+    "Nietzsche_Beyond_Good_and_Evil": "https://www.gutenberg.org/cache/epub/4363/pg4363.txt",
+    "Nietzsche_Thus_Spake_Zarathustra": "https://www.gutenberg.org/cache/epub/1998/pg1998.txt",
+    "Spinoza_Ethics": "https://www.gutenberg.org/cache/epub/3800/pg3800.txt",
+    "Kant_Critique_of_Pure_Reason": "https://www.gutenberg.org/cache/epub/4280/pg4280.txt",
+    "Machiavelli_The_Prince": "https://www.gutenberg.org/cache/epub/1232/pg1232.txt",
+    
+    # Greek Mythology & Epic Poetry
+    "Homer_Iliad": "https://www.gutenberg.org/cache/epub/6130/pg6130.txt",
+    "Homer_Odyssey": "https://www.gutenberg.org/cache/epub/1727/pg1727.txt",
+    "Hesiod_Theogony_Works_and_Days": "https://www.gutenberg.org/cache/epub/348/pg348.txt",
+    "Bulfinch_Mythology_Age_of_Fable": "https://www.gutenberg.org/cache/epub/223/pg223.txt",
+    
+    # Complex Literary & Gothic Masterpieces
+    "Dostoevsky_Crime_and_Punishment": "https://www.gutenberg.org/cache/epub/2554/pg2554.txt",
+    "Dostoevsky_Brothers_Karamazov": "https://www.gutenberg.org/cache/epub/28054/pg28054.txt",
+    "Shelley_Frankenstein": "https://www.gutenberg.org/cache/epub/84/pg84.txt",
+    "Stoker_Dracula": "https://www.gutenberg.org/cache/epub/345/pg345.txt",
+    "Kafka_Metamorphosis": "https://www.gutenberg.org/cache/epub/5200/pg5200.txt"
 }
 
 
