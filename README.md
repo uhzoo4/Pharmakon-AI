@@ -56,84 +56,55 @@ To prevent numerical explosions (gradient explosions or division by zero) common
 - **cProfile Latency Analysis:** Audit bottleneck functions outside attention blocks, such as high-vocabulary projection layers.
 - **Frontend Connector Integration:** Configure Next.js CORS settings to allow dynamic API routing and typewrite rendering of the generator endpoints.
 
----
-
-## Directory Layout
-
-```
-pharmakon/
-├── backend/                    # CPU Inference & Training Engine
-│   ├── requirements.txt        # Backend dependencies (FastAPI, NumPy, Pydantic)
-│   ├── transformer.py          # Custom Transformer class with RoPE & Causal Masking
-│   ├── train.py                # AdamW optimizer, Cosine Decay, and backprop loop
-│   ├── generate.py             # Logits Sampler with temperature & blacklists
-│   ├── weight_manager.py       # In-memory RAM cache & atomic checkpoint persistence
-│   ├── main.py                 # FastAPI uvicorn application server
-│   └── weights/                # Compressed .npz weights for trained personalities
-├── data/                       # Training Corpora Directory
-│   ├── README.md               # Dataset formatting and cleaning guidelines
-│   ├── untranslated/           # Input folder for foreign language novels
-│   └── *.txt                   # Raw and cleaned text files (ignored by Git)
-├── docs/                       # Project Documentation & Technical Specs
-│   ├── CORPUS_CLEANING_SPECIFICATION.md  # Math specs for Unicode normalization
-│   ├── SYSTEM_DNA.md           # Mathematical rules, shapes, and backward equations
-│   ├── PORTFOLIO_GUIDE.md      # Portfolio guide & technical interview preparation
-│   ├── TECHNICAL_REQUIREMENTS_DOCUMENT.md
-│   └── PRODUCT_REQUIREMENTS_DOCUMENT.md
-├── tests/                      # Verification & Regression Test Suite
-│   ├── test_kv_cache_correctness.py  # Logits precision & perplexity regression test
-│   └── test_concurrency.py     # Multi-threaded request isolation test
-├── clean_corpus.py             # Standalone Python dataset cleaning utility
-├── translator.py               # Multimodal translation utility for txt, docx, and pdf
-├── download_gutenberg.py       # Dynamic search & downloader using Gutendex catalog API
-├── train_personalities.py      # Batch training pipeline for all corpora
-├── pyrightconfig.json          # Pyright/Pylance editor type-checker configuration
-└── README.md                   # [This file] Setup & Startup guide
-```
+For a comprehensive guide on presenting this project to recruiters, university admissions, and technical interviewers, see the [Portfolio Guide](docs/PORTFOLIO_GUIDE.md).
 
 ---
 
-## Quick Start
+## API Specifications
 
-### 1. Prerequisites
-* **Python:** 3.10+ (Tested on Python 3.13)
-* **Node.js:** 18+ (for Next.js frontend web application)
+### 1. Generate Text (Streaming SSE)
+* **Endpoint:** `POST /api/generate`
+* **Content-Type:** `application/json`
+* **Payload:**
+  ```json
+  {
+    "personality": "the_assistant",
+    "prompt": "User: How are you?\nAssistant:",
+    "temperature": 0.85,
+    "max_tokens": 150,
+    "blacklist": []
+  }
+  ```
+* **Returns:** Server-Sent Events (SSE) streaming raw characters: `data: {"text": "h"}` ... `data: {"done": true}`
 
-### 2. Environment Setup
-1. Clone the repository and navigate to the project directory:
-   ```bash
-   cd "pharmakon AI"
-   ```
-2. Install Python dependencies inside your virtual environment:
-   ```bash
-   & ".venv/Scripts/python.exe" -m pip install -r backend/requirements.txt
-   ```
-
-### 3. Dynamic Book Ingestion
-You can search and ingest public domain texts directly from Project Gutenberg:
-```bash
-& ".venv/Scripts/python.exe" download_gutenberg.py
-```
-This will allow you to search for categories like Greek Mythology, Philosophy, Gothic, or Custom queries, automatically download missing books, clean them, and save them in `data/`.
-
-### 4. Corpus Normalization and Training
-1. **Run text normalization:**
-   ```bash
-   & ".venv/Scripts/python.exe" clean_corpus.py
-   ```
-2. **Kick off batch training:**
-   ```bash
-   & ".venv/Scripts/python.exe" train_personalities.py
-   ```
-
-### 5. Start the FastAPI API Server
-1. Start the Uvicorn application server:
-   ```bash
-   & ".venv/Scripts/python.exe" -m uvicorn backend.main:app --port 8000 --reload
-   ```
-2. Open your browser and navigate to:
-   * **Swagger API Documentation:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) (Test endpoints interactively)
-   * **Personalities Endpoint:** [http://127.0.0.1:8000/api/personalities](http://127.0.0.1:8000/api/personalities)
+### 2. On-Demand Training / Fine-Tuning
+* **Endpoint:** `POST /api/train`
+* **Content-Type:** `application/json`
+* **Payload:**
+  ```json
+  {
+    "personality": "new_existentialist",
+    "text": "The absurd arises from the confrontation between the human need for meaning and the cold, silent universe...",
+    "epochs": 10,
+    "batch_size": 16,
+    "lr": 0.0003
+  }
+  ```
+* **Returns:**
+  ```json
+  {
+    "success": true,
+    "training_id": "8b525f24-2c4d-44a6-9ea3-4cf15de11f0a",
+    "personality": "new_existentialist",
+    "created": true,
+    "epochs": 10,
+    "batch_size": 16,
+    "learning_rate": 0.0003,
+    "training_tokens": 112,
+    "training_time_seconds": 0.85
+  }
+  ```
+  *Note: A global lock ensures training runs are safely serialized. The freshly trained weights are atomically written to disk and cached in RAM for immediate text generation.*
 
 ---
 
