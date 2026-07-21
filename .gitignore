@@ -8,3 +8,4 @@ weights/*.npz
 data/*.txt
 backend/weights/
 .vscode/
+checkpoints/

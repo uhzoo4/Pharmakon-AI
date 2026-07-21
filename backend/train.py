@@ -5,6 +5,8 @@ Uses the refactored transformer with FlashAttention.
 
 import numpy as np
 import time
+import os
+import gc
 from transformer import PharmakonTransformer
 
 # -----------------------------------------------------------------------------
@@ -34,7 +36,7 @@ class AdamW:
             self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (grad ** 2)
             m_hat = self.m[i] / (1 - self.beta1 ** self.t)
             v_hat = self.v[i] / (1 - self.beta2 ** self.t)
-            param -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
+            param -= self.lr * m_hat / (np.sqrt(np.maximum(v_hat, 0.0)) + self.eps)
 
     def zero_grad(self):
         for _, grad in self.model.get_params_and_grads():
@@ -53,6 +55,7 @@ class CosineDecayWithWarmup:
         self.min_lr = min_lr
         self.base_lr = optimizer.lr
         self.step_num = 0
+        self.current_lr = optimizer.lr
 
     def step(self):
         self.step_num += 1
@@ -64,6 +67,7 @@ class CosineDecayWithWarmup:
             progress = (self.step_num - self.warmup_steps) / max(1, self.total_steps - self.warmup_steps)
             lr = self.min_lr + 0.5 * (self.base_lr - self.min_lr) * (1 + np.cos(np.pi * progress))
         self.optimizer.lr = lr
+        self.current_lr = lr
 
 
 # -----------------------------------------------------------------------------
@@ -82,6 +86,68 @@ def get_batch(data, batch_size, seq_len):
     x = np.stack([data[i:i+seq_len] for i in idx])
     y = np.stack([data[i+1:i+seq_len+1] for i in idx])
     return x, y
+
+
+# -----------------------------------------------------------------------------
+# Checkpoint Helpers
+# -----------------------------------------------------------------------------
+def extract_weights(model):
+    """Extract model parameters for saving."""
+    params_dict = {}
+    params_dict["token_embedding"] = model.token_embedding.astype(np.float32)
+    params_dict["W_out"] = model.W_out.astype(np.float32)
+    params_dict["ln_final_gamma"] = model.ln_final.gamma.astype(np.float32)
+    params_dict["ln_final_beta"] = model.ln_final.beta.astype(np.float32)
+
+    for i, block in enumerate(model.blocks):
+        prefix = f"block_{i}_"
+        params_dict[prefix + "Wq"] = block.Wq.astype(np.float32)
+        params_dict[prefix + "Wk"] = block.Wk.astype(np.float32)
+        params_dict[prefix + "Wv"] = block.Wv.astype(np.float32)
+        params_dict[prefix + "Wo"] = block.Wo.astype(np.float32)
+        params_dict[prefix + "ln1_gamma"] = block.ln1.gamma.astype(np.float32)
+        params_dict[prefix + "ln1_beta"] = block.ln1.beta.astype(np.float32)
+        params_dict[prefix + "ln2_gamma"] = block.ln2.gamma.astype(np.float32)
+        params_dict[prefix + "ln2_beta"] = block.ln2.beta.astype(np.float32)
+        params_dict[prefix + "W1"] = block.W1.astype(np.float32)
+        params_dict[prefix + "b1"] = block.b1.astype(np.float32)
+        params_dict[prefix + "W2"] = block.W2.astype(np.float32)
+        params_dict[prefix + "b2"] = block.b2.astype(np.float32)
+    return params_dict
+
+
+def save_checkpoint(model, epoch, base_path="checkpoints"):
+    os.makedirs(base_path, exist_ok=True)
+    slot = epoch % 3
+    path = os.path.join(base_path, f"model_slot_{slot}.npz")
+    tmp_path = path + ".tmp.npz"
+    
+    weights = extract_weights(model)
+    np.savez_compressed(tmp_path, **weights)
+    os.replace(tmp_path, path)
+    print(f"[Checkpoint] Saved rolling checkpoint for epoch {epoch} to slot {slot}")
+
+
+def load_checkpoint(model, epoch, base_path="checkpoints"):
+    # Scan rolling slots in reverse order starting from the previous epoch
+    for offset in [1, 2, 3]:
+        prev_epoch = epoch - offset
+        if prev_epoch < 0:
+            continue
+        slot = prev_epoch % 3
+        path = os.path.join(base_path, f"model_slot_{slot}.npz")
+        if os.path.exists(path):
+            print(f"[Checkpoint] Restoring weights from clean checkpoint: {path} (slot {slot})")
+            try:
+                weights = dict(np.load(path))
+                # Cast parameters to float64
+                for key in weights:
+                    weights[key] = weights[key].astype(np.float64)
+                model.load_weights(weights)
+                return True
+            except Exception as e:
+                print(f"[Checkpoint] Failed to load checkpoint {path}: {e}")
+    return False
 
 
 # -----------------------------------------------------------------------------
@@ -117,6 +183,17 @@ def train(
     # Initialize optimizer with model references
     optimizer = AdamW(model, lr=lr, weight_decay=weight_decay)
     scheduler = CosineDecayWithWarmup(optimizer, warmup_steps, total_batches)
+
+    logits = None
+    caches = None
+    logits_flat = None
+    targets_flat = None
+    max_logits = None
+    shifted = None
+    exp_shifted = None
+    probs = None
+    d_logits_flat = None
+    d_logits = None
 
     epoch_losses = []
 
@@ -155,14 +232,25 @@ def train(
             # Gradient clipping (global L2 norm)
             params_grads = model.get_params_and_grads()
             total_norm = 0.0
+            has_nan_or_inf = False
             for _, grad in params_grads:
-                total_norm += np.sum(grad ** 2)
+                if grad is not None:
+                    if not np.isfinite(grad).all():
+                        has_nan_or_inf = True
+                    total_norm += np.sum(grad ** 2)
             total_norm = np.sqrt(total_norm)
+
+            if has_nan_or_inf or np.isnan(total_norm) or np.isinf(total_norm):
+                print(f"  [WARNING] Epoch {epoch} | Step {step+1}: NaNs/Infs detected in gradients! Skipping parameter update.")
+                optimizer.zero_grad()
+                continue
+
             max_norm = 1.0
             if total_norm > max_norm:
                 scale = max_norm / total_norm
                 for _, grad in params_grads:
-                    grad *= scale
+                    if grad is not None:
+                        grad *= scale
 
             # Update weights and learning rate
             optimizer.step()
@@ -175,11 +263,49 @@ def train(
                 
             if (step + 1) % 1000 == 0:
                 print(f"[System] Auto-saving checkpoint at step {step+1}...")
-                model.save("backend/weights/the_leviathan_checkpoint.npz")
+                chk_path = "backend/weights/the_leviathan_checkpoint.npz"
+                tmp_chk = chk_path + ".tmp.npz"
+                try:
+                    weights = extract_weights(model)
+                    np.savez_compressed(tmp_chk, **weights)
+                    os.replace(tmp_chk, chk_path)
+                except Exception as exc:
+                    print(f"  [WARNING] Auto-saving at step {step+1} failed: {exc}")
 
         avg_loss = epoch_loss / steps_per_epoch
+        
+        # Check for NaNs/Infs
+        if np.isnan(avg_loss) or np.isinf(avg_loss):
+            print("Execution halted: Numerical divergence detected!")
+            # Trigger an emergency load of last clean checkpoint
+            restored = load_checkpoint(model, epoch, base_path="checkpoints")
+            if restored:
+                print("[System] Successfully recovered from last clean checkpoint.")
+            else:
+                print("[System] Could not find any clean checkpoint to restore.")
+            raise ValueError("Numerical divergence: Loss is NaN or Inf")
+
         print(f"Epoch {epoch:2d} | loss: {avg_loss:.4f} | lr: {optimizer.lr:.2e}")
         epoch_losses.append(avg_loss)
+
+        # Save a clean rolling checkpoint
+        try:
+            save_checkpoint(model, epoch, base_path="checkpoints")
+        except Exception as exc:
+            print(f"  [WARNING] Failed to save rolling checkpoint: {exc}")
+
+        # Force garbage collection at the end of the epoch
+        logits = None
+        caches = None
+        logits_flat = None
+        targets_flat = None
+        max_logits = None
+        shifted = None
+        exp_shifted = None
+        probs = None
+        d_logits_flat = None
+        d_logits = None
+        gc.collect()
         
     print("Training complete.")
     return epoch_losses
