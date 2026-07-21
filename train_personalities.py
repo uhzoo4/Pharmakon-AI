@@ -7,6 +7,7 @@ Supports incremental fine-tuning if weights already exist.
 """
 
 import sys
+import json
 from pathlib import Path
 import numpy as np
 
@@ -27,6 +28,16 @@ def run_pipeline(epochs=20, batch_size=32, seq_len=64, lr=3e-4, use_checkpoint=T
     weights_dir = Path("backend/weights")
     weights_dir.mkdir(parents=True, exist_ok=True)
 
+    # Load loop progress tracker to support pause/resume
+    progress_path = weights_dir / ".training_progress.json"
+    completed = []
+    if progress_path.exists():
+        try:
+            completed = json.loads(progress_path.read_text(encoding="utf-8"))
+            print(f"[Resume] Found progress file. Resuming from step {len(completed) + 1}.")
+        except Exception as e:
+            print(f"[Warning] Failed to load progress file, starting clean: {e}")
+
     txt_files = list(data_dir.glob("*.txt"))
     if not txt_files:
         print("No training corpus files found in data/ folder.")
@@ -37,6 +48,12 @@ def run_pipeline(epochs=20, batch_size=32, seq_len=64, lr=3e-4, use_checkpoint=T
 
     for file_path in txt_files:
         name = file_path.stem
+        
+        # Check if already trained in the current run
+        if name in completed:
+            print(f"\nSkipping '{name}' (already trained and saved in this run).")
+            continue
+
         print("\n" + "=" * 60)
         print(f"Starting training pipeline for personality: '{name}'")
         print("=" * 60)
@@ -129,8 +146,19 @@ def run_pipeline(epochs=20, batch_size=32, seq_len=64, lr=3e-4, use_checkpoint=T
 
             np.savez_compressed(npz_path, **params_dict)
             print(f"  [OK] Saved '{name}' parameters successfully.")
+            
+            # Save progress dynamically to allow loop resume
+            completed.append(name)
+            progress_path.write_text(json.dumps(completed), encoding="utf-8")
         except Exception as exc:
             print(f"  [WARNING] Failed to save weights to file: {exc}")
+
+    # Remove progress tracker when all files complete successfully
+    if progress_path.exists():
+        try:
+            progress_path.unlink()
+        except Exception as e:
+            print(f"[Warning] Failed to clean progress file: {e}")
 
     print("\nTraining run complete.")
 
