@@ -3,6 +3,8 @@ import sys
 import time
 import subprocess
 import numpy as np
+import argparse
+import json
 from pathlib import Path
 
 # Setup paths
@@ -49,7 +51,7 @@ def load_and_merge_data() -> str:
         
     return combined
 
-def continuous_fine_tune(text_data: str):
+def continuous_fine_tune(text_data: str, resume_state: dict = None):
     print("--- 3. CONTINUOUS FINE-TUNING ---")
     
     # Hyper-scaled architecture for the_pinnacle.npz
@@ -105,7 +107,8 @@ def continuous_fine_tune(text_data: str):
         lr=5e-6, # Extremely low learning rate to prevent shock without Adam state
         weight_decay=0.01, 
         warmup_steps=5, 
-        use_checkpoint=False
+        use_checkpoint=True,
+        resume_state=resume_state
     )
     
     # NaN Protection
@@ -139,6 +142,22 @@ def continuous_fine_tune(text_data: str):
     print("[System] Continuous Training Cycle Complete! Model adapted to fresh internet data.")
 
 if __name__ == "__main__":
-    run_harvesters()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--worker", action="store_true", help="Run as worker")
+    parser.add_argument("--resume_from", type=str, default="", help="Path to JSON state to resume from")
+    args = parser.parse_args()
+
+    resume_state = None
+    if args.resume_from:
+        print(f"[Worker] Loading resume state from {args.resume_from}...")
+        with open(args.resume_from, "r") as f:
+            resume_state = json.load(f)
+
+    # Only run harvesters if we are NOT resuming from a crash midway through
+    if not resume_state:
+        run_harvesters()
+    else:
+        print("[System] Resuming from crash: Skipping harvester to prevent dataset ballooning.")
+
     fresh_data = load_and_merge_data()
-    continuous_fine_tune(fresh_data)
+    continuous_fine_tune(fresh_data, resume_state=resume_state)

@@ -10,7 +10,15 @@ def main():
     print("==================================================")
     print("Monitoring training loop for memory leaks, crashes, and NaNs.")
     
-    script_path = Path(__file__).parent / "train_world.py"
+    if len(sys.argv) > 1:
+        script_path = Path(sys.argv[1]).resolve()
+    else:
+        script_path = Path(__file__).parent / "train_world.py"
+        
+    if not script_path.exists():
+        print(f"Error: Could not find script at {script_path}")
+        sys.exit(1)
+        
     state_file = Path(__file__).parent / "weights" / "checkpoints" / "training_state.json"
     
     restart_count = 0

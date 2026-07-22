@@ -1,6 +1,8 @@
 import sys
 import time
 import numpy as np
+import argparse
+import json
 from pathlib import Path
 
 # Setup paths to import backend modules
@@ -12,6 +14,16 @@ from clean_corpus import clean_text
 import train as train_module
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--worker", action="store_true", help="Run as worker")
+    parser.add_argument("--resume_from", type=str, default="", help="Path to JSON state to resume from")
+    args = parser.parse_args()
+
+    resume_state = None
+    if args.resume_from:
+        print(f"[Worker] Loading resume state from {args.resume_from}...")
+        with open(args.resume_from, "r") as f:
+            resume_state = json.load(f)
     VOCAB_CHARS = ["\n", "\t"] + [chr(i) for i in range(32, 127)]
     char_to_idx = {c: i for i, c in enumerate(VOCAB_CHARS)}
     VOCAB_SIZE = len(VOCAB_CHARS)
@@ -60,7 +72,8 @@ def main():
         lr=3e-4, 
         weight_decay=0.01, 
         warmup_steps=warmup, 
-        use_checkpoint=True
+        use_checkpoint=True,
+        resume_state=resume_state
     )
 
     elapsed = time.time() - start
