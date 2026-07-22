@@ -65,7 +65,7 @@ def continuous_fine_tune(text_data: str, resume_state: dict = None):
         num_heads=8, 
         ff_dim=256, 
         num_layers=4, 
-        max_seq_len=128
+        max_seq_len=64
     )
     
     target_weights = WEIGHTS_DIR / "the_pinnacle.npz"
@@ -102,8 +102,8 @@ def continuous_fine_tune(text_data: str, resume_state: dict = None):
         data=text_data, 
         char_to_idx=char_to_idx, 
         epochs=20, # Hyper-stress testing
-        batch_size=32, # Increased batch size
-        seq_len=128, # Double context window for the_pinnacle
+        batch_size=16, # Halved batch size to prevent OOM
+        seq_len=64, # Halved context window to prevent OOM
         lr=5e-6, # Extremely low learning rate to prevent shock without Adam state
         weight_decay=0.01, 
         warmup_steps=5, 
