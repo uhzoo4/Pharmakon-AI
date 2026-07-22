@@ -7,6 +7,8 @@ import numpy as np
 import time
 import os
 import gc
+import json
+import sys
 from transformer import PharmakonTransformer
 
 # -----------------------------------------------------------------------------
@@ -128,6 +130,22 @@ def save_checkpoint(model, epoch, base_path="checkpoints"):
     print(f"[Checkpoint] Saved rolling checkpoint for epoch {epoch} to slot {slot}")
 
 
+def save_training_state(epoch, step, scheduler_step, current_lr, base_path="checkpoints"):
+    os.makedirs(base_path, exist_ok=True)
+    state = {
+        "epoch": epoch,
+        "step": step,
+        "scheduler_step": scheduler_step,
+        "learning_rate": current_lr
+    }
+    path = os.path.join(base_path, "training_state.json")
+    tmp_path = path + ".tmp"
+    with open(tmp_path, "w") as f:
+        json.dump(state, f)
+    os.replace(tmp_path, path)
+    print(f"[Checkpoint] Saved JSON training state (Epoch {epoch}, Step {step})")
+
+
 def load_checkpoint(model, epoch, base_path="checkpoints"):
     # Scan rolling slots in reverse order starting from the previous epoch
     for offset in [1, 2, 3]:
@@ -163,7 +181,8 @@ def train(
     lr=1e-3, 
     weight_decay=0.01,
     warmup_steps=100,
-    use_checkpoint=True
+    use_checkpoint=True,
+    resume_state=None
 ):
     """
     Trains the PharmakonTransformer.
@@ -199,9 +218,20 @@ def train(
 
     print(f"Training {epochs} epochs, {steps_per_epoch} batches/epoch, total steps {total_batches}")
 
-    for epoch in range(1, epochs+1):
+    start_epoch = 1
+    start_step = 0
+    if resume_state:
+        start_epoch = resume_state.get("epoch", 1)
+        start_step = resume_state.get("step", 0)
+        scheduler.step_num = resume_state.get("scheduler_step", 0)
+        print(f"[System] Resuming from epoch {start_epoch}, step {start_step}")
+
+    for epoch in range(start_epoch, epochs+1):
         epoch_loss = 0.0
         for step in range(steps_per_epoch):
+            if epoch == start_epoch and step < start_step:
+                continue
+
             x, y = get_batch(encoded, batch_size, seq_len)
 
             # Forward (with gradient checkpointing if enabled)
@@ -241,9 +271,8 @@ def train(
             total_norm = np.sqrt(total_norm)
 
             if has_nan_or_inf or np.isnan(total_norm) or np.isinf(total_norm):
-                print(f"  [WARNING] Epoch {epoch} | Step {step+1}: NaNs/Infs detected in gradients! Skipping parameter update.")
-                optimizer.zero_grad()
-                continue
+                print(f"  [FATAL] Epoch {epoch} | Step {step+1}: NaNs/Infs detected in gradients! Triggering Self-Kill (Exit 88)")
+                sys.exit(88)
 
             max_norm = 1.0
             if total_norm > max_norm:
@@ -269,6 +298,7 @@ def train(
                     weights = extract_weights(model)
                     np.savez_compressed(tmp_chk, **weights)
                     os.replace(tmp_chk, chk_path)
+                    save_training_state(epoch, step+1, scheduler.step_num, scheduler.current_lr, "checkpoints")
                 except Exception as exc:
                     print(f"  [WARNING] Auto-saving at step {step+1} failed: {exc}")
 
@@ -276,14 +306,8 @@ def train(
         
         # Check for NaNs/Infs
         if np.isnan(avg_loss) or np.isinf(avg_loss):
-            print("Execution halted: Numerical divergence detected!")
-            # Trigger an emergency load of last clean checkpoint
-            restored = load_checkpoint(model, epoch, base_path="checkpoints")
-            if restored:
-                print("[System] Successfully recovered from last clean checkpoint.")
-            else:
-                print("[System] Could not find any clean checkpoint to restore.")
-            raise ValueError("Numerical divergence: Loss is NaN or Inf")
+            print(f"Execution halted: Numerical divergence detected! Epoch loss is {avg_loss}. Triggering Self-Kill (Exit 88)")
+            sys.exit(88)
 
         print(f"Epoch {epoch:2d} | loss: {avg_loss:.4f} | lr: {optimizer.lr:.2e}")
         epoch_losses.append(avg_loss)
@@ -291,6 +315,7 @@ def train(
         # Save a clean rolling checkpoint
         try:
             save_checkpoint(model, epoch, base_path="checkpoints")
+            save_training_state(epoch, 0, scheduler.step_num, optimizer.lr, "checkpoints")
         except Exception as exc:
             print(f"  [WARNING] Failed to save rolling checkpoint: {exc}")
 
