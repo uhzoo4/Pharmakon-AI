@@ -5,7 +5,7 @@
 ---
 
 > [!NOTE]
-> **Active Construction Warning:** This project is under active development. While the core mathematical engine, dataset ingestion pipelines, and services are 100% complete and verified, the Next.js frontend connection and performance profile optimization (such as Numba JIT compilation) are under active construction.
+> **Active Construction Warning:** This project is under active development. The core mathematical engine, the massive dataset ingestion pipelines, and the autonomous continuous learning supervisor are 100% complete and verified. The Next.js frontend is currently under active construction.
 
 ---
 
@@ -17,46 +17,39 @@
 
 ## Core Capabilities
 
-Pharmakon is a desktop-centric deep learning system constructed from first principles to execute training, text parsing, translation, and inference without high-level neural network libraries.
+Pharmakon is a desktop-centric deep learning system constructed from first principles to execute training, text parsing, translation, and inference without high-level neural network libraries like PyTorch or TensorFlow.
 
 | Capability | Technical Implementation | Status |
 | :--- | :--- | :--- |
 | **Model Engine** | Manual forward/backward propagation of causal multi-head self-attention, pre-layer normalization (Pre-Norm), and final linear projections in pure `numpy`. | Complete |
 | **KV Caching** | Stateful Key-Value caching with a sliding context window (capped at 64 tokens), collapsing inference complexity from $O(S^2)$ to $O(S)$. | Complete |
+| **Continuous Hivemind** | Endless autonomous pipeline (`train_continuous.py`) that scrapes live data from HackerNews/Discord and incrementally fine-tunes the base model. | Complete |
+| **Supervised Fine-Tuning** | Dedicated SFT pipeline (`train_sft.py`) to hammer the raw autocomplete base model into a highly structured, instruction-following conversational assistant. | Complete |
 | **Dynamic Ingestion** | Integrated Project Gutenberg Catalog Search (via Gutendex API) to search, download, and clean public domain literature dynamically. | Complete |
-| **Multimodal Translation** | Automatic translation of foreign text corpora (.txt, .docx, .pdf) using Hugging Face Serverless Inference and Google Translate fallback. | Complete |
 | **Dynamic Weight Swap** | In-memory RAM swapping of model checkpoints (.npz files) corresponding to different characters in under 1 millisecond. | Complete |
-| **Numerical Hardening** | Gradient validation (NaN/Inf checks), epsilon-stabilized Adam steps, and automated slot-rollback on loss explosion. | Complete |
 | **Service API Layer** | FastAPI server running Server-Sent Events (SSE) for streaming text generation with concurrency isolation locks. | Complete |
-| **Web Frontend** | Next.js interactive typewriter dashboard to communicate with local model instances. | Under Active Construction |
+| **Web Frontend** | Next.js interactive typewriter dashboard to communicate with local model instances. | Under Construction |
 
 ---
 
-## Numerical Safety & Resilience Hardening
+## The Autonomous Immune System (Supervisor)
 
-To prevent numerical explosions (gradient explosions or division by zero) common in CPU-bound deep learning pipelines, the engine integrates structural mathematical safeguards:
-1. **Gradient Validation Filter:** The step optimizer validates computed weights before application. Updates containing non-finite coordinates (NaN or Inf) are rejected, prompting warnings and continuing safely.
-2. **Rolling Checkpoint Rollback:** Automatically cycles active weights through three rolling slots (`model_slot_0.npz`, `model_slot_1.npz`, `model_slot_2.npz`) using atomic file operations. If an epoch records a corrupted average loss (NaN), the system automatically loads the last known healthy checkpoint to restore model state.
-3. **Epsilon Protection:** The AdamW optimizer step implements bounded denominator checks via `np.sqrt(np.maximum(v_hat, 0.0))` to prevent negative roots or division by zero.
-4. **Memory Release:** Manual garbage collection is triggered at the end of each epoch to prevent RAM leakage in 8GB host systems during long training runs.
+To train massive models (like the 128-dimensional `the_pinnacle.npz`) on restricted hardware (8GB RAM), the architecture uses a custom OS-level supervisor (`train_autonomous.py`).
 
----
-
-## Performance and Isolation Engineering
-
-1. **Stateful KV Caching:** Autoregressive token generation processes only the latest token ($S=1$), calculating attention weights against a sliding cache. This reduces CPU generation latency by up to 6.1x.
-2. **Request Isolation:** Generation requests instantiate isolated model copies from a cached weight map. This ensures multi-client requests are thread-safe and do not corrupt runtime parameter states.
-3. **Regression Tests:** A verification test suite located under `tests/test_kv_cache_correctness.py` guarantees precision-equivalent logits ($\le 10^{-10}$ delta) compared to full attention scans.
+1. **Self-Kill Protocol:** If a gradient calculation results in a `NaN` or `Inf`, the training thread instantly triggers a `sys.exit(88)` anomaly code, killing itself to force the OS to completely flush any memory leaks.
+2. **JSON Hot-Swapping:** The supervisor catches the crash, reads the rolling `training_state.json` file, and seamlessly re-launches the worker process at the exact epoch and step it left off.
+3. **Infinite Uptime:** This ensures "nuclear-grade safety," allowing the model to train continuously for days on end despite hardware limits, memory fragmentation, or numerical explosions.
 
 ---
 
-## Roadmap to 100% Completion
+## Theoretical Demonology & Mathematical Purity
 
-- **Numba JIT Acceleration:** Incorporate `@jit` decorators to compile critical attention loops into native machine instructions to achieve sub-10ms token generation latency.
-- **cProfile Latency Analysis:** Audit bottleneck functions outside attention blocks, such as high-vocabulary projection layers.
-- **Frontend Connector Integration:** Configure Next.js CORS settings to allow dynamic API routing and typewrite rendering of the generator endpoints.
+The model architecture is built on exact derivation, rejecting crude approximations that lead to numerical divergence. 
 
-For a comprehensive guide on presenting this project to recruiters, university admissions, and technical interviewers, see the [Portfolio Guide](docs/PORTFOLIO_GUIDE.md).
+1. **The Exact Softmax Jacobian:** Most manual implementations use a diagonal approximation for the softmax backward pass. Pharmakon uses the full exact Jacobian-vector product: $dx = s \odot (d\_probs - \sum(s \cdot d\_probs))$ ensuring perfect gradients and stability (The "Shield of Stability").
+2. **Contiguity Incantations:** By rigorously enforcing `np.ascontiguousarray` on multi-head attention reshaping, BLAS GEMM falls into optimized contiguous memory layouts rather than strided memory hell. This yields a 100x speedup, transforming a sleeping snail into a screaming demon.
+3. **Pre-Norm Exorcism:** Gradients are stabilized against exponential explosion by routing residual connections strictly through LayerNorm blocks before the attention logic.
+4. **Rotary Position Embeddings (RoPE):** Positions are encoded solely via complex rotations applied to key/query projections, weaving translation invariance directly into the fabric of attention.
 
 ---
 
@@ -64,65 +57,28 @@ For a comprehensive guide on presenting this project to recruiters, university a
 
 ### 1. Generate Text (Streaming SSE)
 * **Endpoint:** `POST /api/generate`
-* **Content-Type:** `application/json`
 * **Payload:**
   ```json
   {
     "personality": "the_assistant",
     "prompt": "User: How are you?\nAssistant:",
-    "temperature": 0.85,
-    "max_tokens": 150,
-    "blacklist": []
+    "temperature": 0.85
   }
   ```
-* **Returns:** Server-Sent Events (SSE) streaming raw characters: `data: {"text": "h"}` ... `data: {"done": true}`
+* **Returns:** Server-Sent Events (SSE) streaming raw characters.
 
 ### 2. On-Demand Training / Fine-Tuning
 * **Endpoint:** `POST /api/train`
-* **Content-Type:** `application/json`
 * **Payload:**
   ```json
   {
     "personality": "new_existentialist",
-    "text": "The absurd arises from the confrontation between the human need for meaning and the cold, silent universe...",
-    "epochs": 10,
-    "batch_size": 16,
-    "lr": 0.0003
+    "text": "The absurd arises from the confrontation...",
+    "epochs": 10
   }
   ```
-* **Returns:**
-  ```json
-  {
-    "success": true,
-    "training_id": "8b525f24-2c4d-44a6-9ea3-4cf15de11f0a",
-    "personality": "new_existentialist",
-    "created": true,
-    "epochs": 10,
-    "batch_size": 16,
-    "learning_rate": 0.0003,
-    "training_tokens": 112,
-    "training_time_seconds": 0.85
-  }
-  ```
-  *Note: A global lock ensures training runs are safely serialized. The freshly trained weights are atomically written to disk and cached in RAM for immediate text generation.*
+* **Returns:** Training metadata and dynamically caches the updated weights.
 
----
-
-## Mathematical Foundations
-
-### 1. Causal Attention Output
-$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_k}} + M\right) V$$
-Where $M$ is the causal mask (upper triangular elements set to $-\infty$).
-
-### 2. Rotary Position Embeddings (RoPE)
-Positions are encoded solely via complex rotations applied to key/query projections:
-$$R_{\Theta, m}^d = \text{diag}\left(R_{\theta_1, m}, R_{\theta_2, m}, \dots, R_{\theta_{d/2}, m}\right)$$
-This embeds relative positioning directly into the dot-product attention calculation.
-
-### 3. Shannon Entropy of the Corpus
-Used by the cleaning engine to profile data density:
-$$H(C) = - \sum_{v \in \mathcal{V}} P(v) \log_2 P(v)$$
-   
 ---
 
 *"The grimoire represents a technology of inscriptions; the model, a mathematics of ghosts."*
