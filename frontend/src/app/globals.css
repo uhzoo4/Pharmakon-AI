@@ -65,6 +65,33 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Custom Sleek Dark Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(10, 10, 10, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Ambient Grimoire Background Mesh */
+.grimoire-bg-mesh {
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(92, 122, 148, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(217, 164, 65, 0.05) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(11, 18, 32, 0.5) 0px, transparent 100%);
+}
+
 /* Phase 3: Linguistic Dissolution (High Temperature Glitch Effect) */
 @keyframes glitch-anim {
   0% { text-shadow: 1px 0 0 rgba(217,164,65,0.5), -1px 0 0 rgba(142,202,230,0.5); }
