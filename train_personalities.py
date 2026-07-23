@@ -10,6 +10,7 @@ import sys
 import json
 from pathlib import Path
 import numpy as np
+from typing import Dict, Any
 
 # Adjust sys.path to resolve backend imports
 sys.path.append(str(Path(__file__).parent / "backend"))
@@ -123,28 +124,9 @@ def run_pipeline(epochs=20, batch_size=32, seq_len=64, lr=3e-4, use_checkpoint=T
         print(f"Saving optimized parameters to checkpoint: {npz_path}")
         try:
             # Gather parameters from model
-            params_dict = {}
-            params_dict["token_embedding"] = model.token_embedding.astype(np.float32)
-            params_dict["W_out"] = model.W_out.astype(np.float32)
-            params_dict["ln_final_gamma"] = model.ln_final.gamma.astype(np.float32)
-            params_dict["ln_final_beta"] = model.ln_final.beta.astype(np.float32)
+            params_dict: Dict[str, Any] = train.extract_weights(model)
 
-            for i, block in enumerate(model.blocks):
-                prefix = f"block_{i}_"
-                params_dict[prefix + "Wq"] = block.Wq.astype(np.float32)
-                params_dict[prefix + "Wk"] = block.Wk.astype(np.float32)
-                params_dict[prefix + "Wv"] = block.Wv.astype(np.float32)
-                params_dict[prefix + "Wo"] = block.Wo.astype(np.float32)
-                params_dict[prefix + "ln1_gamma"] = block.ln1.gamma.astype(np.float32)
-                params_dict[prefix + "ln1_beta"] = block.ln1.beta.astype(np.float32)
-                params_dict[prefix + "ln2_gamma"] = block.ln2.gamma.astype(np.float32)
-                params_dict[prefix + "ln2_beta"] = block.ln2.beta.astype(np.float32)
-                params_dict[prefix + "W1"] = block.W1.astype(np.float32)
-                params_dict[prefix + "b1"] = block.b1.astype(np.float32)
-                params_dict[prefix + "W2"] = block.W2.astype(np.float32)
-                params_dict[prefix + "b2"] = block.b2.astype(np.float32)
-
-            np.savez_compressed(npz_path, **params_dict)
+            np.savez_compressed(npz_path, **dict(params_dict))
             print(f"  [OK] Saved '{name}' parameters successfully.")
             
             # Save progress dynamically to allow loop resume

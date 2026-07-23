@@ -6,6 +6,7 @@ import numpy as np
 import argparse
 import json
 from pathlib import Path
+from typing import Dict, Any
 
 # Setup paths
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -51,7 +52,7 @@ def load_and_merge_data() -> str:
         
     return combined
 
-def continuous_fine_tune(text_data: str, resume_state: dict = None):
+def continuous_fine_tune(text_data: str, resume_state: dict | None = None):
     print("--- 3. CONTINUOUS FINE-TUNING ---")
     
     # Hyper-scaled architecture for the_pinnacle.npz
@@ -68,32 +69,17 @@ def continuous_fine_tune(text_data: str, resume_state: dict = None):
         max_seq_len=64
     )
     
+    WEIGHTS_DIR = Path("backend/weights")
     target_weights = WEIGHTS_DIR / "the_pinnacle.npz"
+
     if not target_weights.exists():
-        print(f"[ERROR] Target model {target_weights} not found to fine-tune!")
+        print(f"[ERROR] Target weights {target_weights} not found!")
         sys.exit(1)
         
     print(f"[System] Loading {target_weights.name} for continuous adaptation...")
     # Load weights
     weights = np.load(target_weights)
-    model.token_embedding = weights['token_embedding']
-    model.W_out = weights['W_out']
-    model.ln_final.gamma = weights['ln_final_gamma']
-    model.ln_final.beta = weights['ln_final_beta']
-    for i, block in enumerate(model.blocks):
-        p = f'block_{i}_'
-        block.Wq = weights[p+'Wq']
-        block.Wk = weights[p+'Wk']
-        block.Wv = weights[p+'Wv']
-        block.Wo = weights[p+'Wo']
-        block.ln1.gamma = weights[p+'ln1_gamma']
-        block.ln1.beta = weights[p+'ln1_beta']
-        block.ln2.gamma = weights[p+'ln2_gamma']
-        block.ln2.beta = weights[p+'ln2_beta']
-        block.W1 = weights[p+'W1']
-        block.b1 = weights[p+'b1']
-        block.W2 = weights[p+'W2']
-        block.b2 = weights[p+'b2']
+    model.load_weights(dict(weights))
 
     # Train on fresh data (low learning rate so it doesn't forget its core identity)
     print(f"[System] Fine-tuning on {len(text_data)} characters of fresh data...")
@@ -118,27 +104,9 @@ def continuous_fine_tune(text_data: str, resume_state: dict = None):
         
     # Save back
     print(f"[System] Saving updated weights to {target_weights}...")
-    params = {}
-    params['token_embedding'] = model.token_embedding.astype(np.float32)
-    params['W_out'] = model.W_out.astype(np.float32)
-    params['ln_final_gamma'] = model.ln_final.gamma.astype(np.float32)
-    params['ln_final_beta'] = model.ln_final.beta.astype(np.float32)
-    for i, block in enumerate(model.blocks):
-        p = f'block_{i}_'
-        params[p+'Wq'] = block.Wq.astype(np.float32)
-        params[p+'Wk'] = block.Wk.astype(np.float32)
-        params[p+'Wv'] = block.Wv.astype(np.float32)
-        params[p+'Wo'] = block.Wo.astype(np.float32)
-        params[p+'ln1_gamma'] = block.ln1.gamma.astype(np.float32)
-        params[p+'ln1_beta'] = block.ln1.beta.astype(np.float32)
-        params[p+'ln2_gamma'] = block.ln2.gamma.astype(np.float32)
-        params[p+'ln2_beta'] = block.ln2.beta.astype(np.float32)
-        params[p+'W1'] = block.W1.astype(np.float32)
-        params[p+'b1'] = block.b1.astype(np.float32)
-        params[p+'W2'] = block.W2.astype(np.float32)
-        params[p+'b2'] = block.b2.astype(np.float32)
+    params: Dict[str, Any] = train_module.extract_weights(model)
 
-    np.savez_compressed(target_weights, **params)
+    np.savez_compressed(target_weights, **dict(params))
     print("[System] Continuous Training Cycle Complete! Model adapted to fresh internet data.")
 
 if __name__ == "__main__":

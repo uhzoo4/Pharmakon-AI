@@ -4,6 +4,7 @@ import numpy as np
 import argparse
 import json
 from pathlib import Path
+from typing import Dict, Any
 
 # Setup paths to import backend modules
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -86,28 +87,10 @@ def main():
     print(f"Pinnacle Training complete in {elapsed:.1f}s")
 
     # Extract and save weights
-    params = {}
-    params['token_embedding'] = model.token_embedding.astype(np.float32)
-    params['W_out'] = model.W_out.astype(np.float32)
-    params['ln_final_gamma'] = model.ln_final.gamma.astype(np.float32)
-    params['ln_final_beta'] = model.ln_final.beta.astype(np.float32)
-    for i, block in enumerate(model.blocks):
-        p = f'block_{i}_'
-        params[p+'Wq'] = block.Wq.astype(np.float32)
-        params[p+'Wk'] = block.Wk.astype(np.float32)
-        params[p+'Wv'] = block.Wv.astype(np.float32)
-        params[p+'Wo'] = block.Wo.astype(np.float32)
-        params[p+'ln1_gamma'] = block.ln1.gamma.astype(np.float32)
-        params[p+'ln1_beta'] = block.ln1.beta.astype(np.float32)
-        params[p+'ln2_gamma'] = block.ln2.gamma.astype(np.float32)
-        params[p+'ln2_beta'] = block.ln2.beta.astype(np.float32)
-        params[p+'W1'] = block.W1.astype(np.float32)
-        params[p+'b1'] = block.b1.astype(np.float32)
-        params[p+'W2'] = block.W2.astype(np.float32)
-        params[p+'b2'] = block.b2.astype(np.float32)
+    params: Dict[str, Any] = train_module.extract_weights(model)
 
     save_path = WEIGHTS_DIR / 'the_pinnacle.npz'
-    np.savez_compressed(save_path, **params)
+    np.savez_compressed(file=save_path, **dict(params))
     print(f"[SAVED] Pinnacle model saved to {save_path}")
 
 if __name__ == "__main__":

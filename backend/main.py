@@ -109,27 +109,7 @@ training_lock = asyncio.Lock()
 
 def extract_weights(model: PharmakonTransformer) -> dict[str, np.ndarray]:
     """Extract model parameters cast to float32 for storage."""
-    params_dict = {}
-    params_dict["token_embedding"] = model.token_embedding.astype(np.float32)
-    params_dict["W_out"] = model.W_out.astype(np.float32)
-    params_dict["ln_final_gamma"] = model.ln_final.gamma.astype(np.float32)
-    params_dict["ln_final_beta"] = model.ln_final.beta.astype(np.float32)
-
-    for i, block in enumerate(model.blocks):
-        prefix = f"block_{i}_"
-        params_dict[prefix + "Wq"] = block.Wq.astype(np.float32)
-        params_dict[prefix + "Wk"] = block.Wk.astype(np.float32)
-        params_dict[prefix + "Wv"] = block.Wv.astype(np.float32)
-        params_dict[prefix + "Wo"] = block.Wo.astype(np.float32)
-        params_dict[prefix + "ln1_gamma"] = block.ln1.gamma.astype(np.float32)
-        params_dict[prefix + "ln1_beta"] = block.ln1.beta.astype(np.float32)
-        params_dict[prefix + "ln2_gamma"] = block.ln2.gamma.astype(np.float32)
-        params_dict[prefix + "ln2_beta"] = block.ln2.beta.astype(np.float32)
-        params_dict[prefix + "W1"] = block.W1.astype(np.float32)
-        params_dict[prefix + "b1"] = block.b1.astype(np.float32)
-        params_dict[prefix + "W2"] = block.W2.astype(np.float32)
-        params_dict[prefix + "b2"] = block.b2.astype(np.float32)
-    return params_dict
+    return {k: np.array(v, dtype=np.float32) for k, v in model.params.items()}
 
 
 @app.get("/api/personalities")
@@ -174,7 +154,18 @@ async def generate_text(req: GenerateRequest, request: Request):
                                 bpe = get_bpe()
                                 if bpe: target_vocab_size = len(bpe.vocab)
                                 
-                            m = PharmakonTransformer(vocab_size=target_vocab_size)
+                            if req.personality in ["the_pinnacle", "the_leviathan"]:
+                                m = PharmakonTransformer(
+                                    vocab_size=target_vocab_size,
+                                    embed_dim=128,
+                                    num_heads=8,
+                                    ff_dim=256,
+                                    num_layers=4,
+                                    max_seq_len=64
+                                )
+                            else:
+                                m = PharmakonTransformer(vocab_size=target_vocab_size)
+                                
                             params_dict = weight_manager.get_weights(req.personality)
                             m.load_weights(params_dict)
                             personality_models[req.personality] = m

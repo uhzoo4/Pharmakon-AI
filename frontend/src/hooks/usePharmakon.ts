@@ -97,9 +97,10 @@ export function usePharmakon() {
               const newToken = { char: data.text, alts: data.alts || [] };
               setMessages((prev) => {
                 const next = [...prev];
-                next[next.length - 1].content = currentText;
-                if (!next[next.length - 1].tokens) next[next.length - 1].tokens = [];
-                next[next.length - 1].tokens!.push(newToken);
+                const lastMsg = { ...next[next.length - 1] };
+                lastMsg.content = currentText;
+                lastMsg.tokens = [...(lastMsg.tokens || []), newToken];
+                next[next.length - 1] = lastMsg;
                 return next;
               });
             }

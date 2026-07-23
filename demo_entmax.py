@@ -28,27 +28,8 @@ def load_pinnacle_weights(path: str):
         max_seq_len=64
     )
     
-    # Load parameters (numpy array dictionary -> model attributes)
-    model.token_embedding = weights['token_embedding']
-    model.W_out = weights['W_out']
-    model.ln_final.gamma = weights['ln_final_gamma']
-    model.ln_final.beta = weights['ln_final_beta']
-    
-    for i, block in enumerate(model.blocks):
-        p = f'block_{i}_'
-        block.Wq = weights[p+'Wq']
-        block.Wk = weights[p+'Wk']
-        block.Wv = weights[p+'Wv']
-        block.Wo = weights[p+'Wo']
-        block.ln1.gamma = weights[p+'ln1_gamma']
-        block.ln1.beta = weights[p+'ln1_beta']
-        block.ln2.gamma = weights[p+'ln2_gamma']
-        block.ln2.beta = weights[p+'ln2_beta']
-        block.W1 = weights[p+'W1']
-        block.b1 = weights[p+'b1']
-        block.W2 = weights[p+'W2']
-        block.b2 = weights[p+'b2']
-        
+    # Load parameters
+    model.load_weights(dict(weights))
     return model
 
 def encode(text: str) -> list[int]:

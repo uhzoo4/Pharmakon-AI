@@ -4,6 +4,7 @@ import re
 import numpy as np
 from pathlib import Path
 import subprocess
+from typing import Dict, Any
 
 # Setup paths
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -129,27 +130,9 @@ def train_leviathan(text_data: str):
         sys.exit(1)
         
     print(f"[System] Saving Leviathan weights to {target_weights}...")
-    params = {}
-    params['token_embedding'] = model.token_embedding.astype(np.float32)
-    params['W_out'] = model.W_out.astype(np.float32)
-    params['ln_final_gamma'] = model.ln_final.gamma.astype(np.float32)
-    params['ln_final_beta'] = model.ln_final.beta.astype(np.float32)
-    for i, block in enumerate(model.blocks):
-        p = f'block_{i}_'
-        params[p+'Wq'] = block.Wq.astype(np.float32)
-        params[p+'Wk'] = block.Wk.astype(np.float32)
-        params[p+'Wv'] = block.Wv.astype(np.float32)
-        params[p+'Wo'] = block.Wo.astype(np.float32)
-        params[p+'ln1_gamma'] = block.ln1.gamma.astype(np.float32)
-        params[p+'ln1_beta'] = block.ln1.beta.astype(np.float32)
-        params[p+'ln2_gamma'] = block.ln2.gamma.astype(np.float32)
-        params[p+'ln2_beta'] = block.ln2.beta.astype(np.float32)
-        params[p+'W1'] = block.W1.astype(np.float32)
-        params[p+'b1'] = block.b1.astype(np.float32)
-        params[p+'W2'] = block.W2.astype(np.float32)
-        params[p+'b2'] = block.b2.astype(np.float32)
+    params: Dict[str, Any] = train_module.extract_weights(model)
 
-    np.savez_compressed(target_weights, **params)
+    np.savez_compressed(target_weights, **dict(params))
     print("[System] The Leviathan has been successfully forged!")
 
 if __name__ == "__main__":
