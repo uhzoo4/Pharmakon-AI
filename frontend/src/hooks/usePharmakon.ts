@@ -95,7 +95,7 @@ export function usePharmakon() {
             if (data.text) {
               currentText += data.text;
               const rawAlts = Array.isArray(data.alts) ? data.alts : [];
-              const alts: AltToken[] = rawAlts.map((alt: any) => ({
+              const alts: AltToken[] = rawAlts.map((alt: { char?: unknown; prob?: unknown }) => ({
                 char: String(alt?.char ?? ""),
                 prob: typeof alt?.prob === "number" ? alt.prob : 0,
               }));
