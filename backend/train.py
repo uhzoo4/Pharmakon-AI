@@ -1,23 +1,30 @@
+from __future__ import annotations
+
+import functools
+import os
+import sys
+import time
+from typing import Dict, Any, List, Optional, Tuple, Union
+
 import jax
 import jax.numpy as jnp
 import numpy as np
-import time
-import os
-import sys
-from typing import Dict, Any
 
 from transformer import pharmakon_forward
+
+_tree_map = getattr(getattr(jax, 'tree', None), 'map', jax.tree_util.tree_map)
+_tree_leaves = getattr(getattr(jax, 'tree', None), 'leaves', jax.tree_util.tree_leaves)
 
 # -----------------------------------------------------------------------------
 # JAX Optimizer: AdamW
 # -----------------------------------------------------------------------------
-def init_adamw_state(params):
+def init_adamw_state(params: Dict[str, Any]) -> Dict[str, Any]:
     """Initialize m and v buffers for all parameters."""
-    m = jax.tree_util.tree_map(lambda x: jnp.zeros_like(x), params)
-    v = jax.tree_util.tree_map(lambda x: jnp.zeros_like(x), params)
+    m = _tree_map(lambda x: jnp.zeros_like(x), params)
+    v = _tree_map(lambda x: jnp.zeros_like(x), params)
     return {'m': m, 'v': v, 't': 0}
 
-def adamw_update(params, grads, opt_state, lr, weight_decay=0.01, beta1=0.9, beta2=0.999, eps=1e-8):
+def adamw_update(params: Dict[str, Any], grads: Dict[str, Any], opt_state: Dict[str, Any], lr: float, weight_decay: float = 0.01, beta1: float = 0.9, beta2: float = 0.999, eps: float = 1e-8) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     t = opt_state['t'] + 1
     
     def update_param(p, g, m, v):
@@ -47,7 +54,7 @@ def adamw_update(params, grads, opt_state, lr, weight_decay=0.01, beta1=0.9, bet
 # Scheduler: cosine decay with linear warmup
 # -----------------------------------------------------------------------------
 class CosineDecayWithWarmup:
-    def __init__(self, base_lr, warmup_steps, total_steps, min_lr=0.0):
+    def __init__(self, base_lr: float, warmup_steps: int, total_steps: int, min_lr: float = 0.0):
         self.base_lr = base_lr
         self.warmup_steps = warmup_steps
         self.total_steps = total_steps
@@ -55,7 +62,7 @@ class CosineDecayWithWarmup:
         self.step_num = 0
         self.current_lr = base_lr
 
-    def step(self):
+    def step(self) -> float:
         self.step_num += 1
         if self.step_num < self.warmup_steps:
             # linear warmup
@@ -71,25 +78,22 @@ class CosineDecayWithWarmup:
 # -----------------------------------------------------------------------------
 # Data helpers
 # -----------------------------------------------------------------------------
-def build_vocab(text):
+def build_vocab(text: str) -> Tuple[Dict[str, int], Dict[int, str], int]:
     chars = sorted(list(set(text)))
     char_to_idx = {ch: i for i, ch in enumerate(chars)}
     idx_to_char = {i: ch for i, ch in enumerate(chars)}
     return char_to_idx, idx_to_char, len(chars)
 
-def get_batch(data, batch_size, seq_len):
+def get_batch(data: Any, batch_size: int, seq_len: int) -> Tuple[np.ndarray, np.ndarray]:
     n = len(data)
     idx = np.random.randint(0, n - seq_len - 1, size=(batch_size,))
     x = np.stack([data[i:i+seq_len] for i in idx])
     y = np.stack([data[i+1:i+seq_len+1] for i in idx])
     return x, y
 
-def extract_weights(model) -> dict[str, Any]:
+def extract_weights(model: Any) -> Dict[str, Any]:
     """Extract model parameters for saving as numpy arrays."""
-    import numpy as np
     return {k: np.array(v, dtype=np.float32) for k, v in model.params.items()}
-
-import functools
 
 # -----------------------------------------------------------------------------
 # JIT Compiled Train Step
@@ -120,12 +124,12 @@ def train_step_jit(params, opt_state, x, y, cos, sin, num_heads, head_dim, num_l
     
     # Global gradient clipping
     def get_sq(g): return jnp.sum(g ** 2)
-    sq_tree = jax.tree_util.tree_map(get_sq, grads)
-    total_norm = jnp.sqrt(jnp.sum(jnp.array(jax.tree_util.tree_leaves(sq_tree))))
+    sq_tree = _tree_map(get_sq, grads)
+    total_norm = jnp.sqrt(jnp.sum(jnp.array(_tree_leaves(sq_tree))))
     
     # Clip if norm > 1.0
     scale = jnp.where(total_norm > 1.0, 1.0 / total_norm, 1.0)
-    grads = jax.tree_util.tree_map(lambda g: g * scale, grads)
+    grads = _tree_map(lambda g: g * scale, grads)
     
     new_params, new_opt_state = adamw_update(params, grads, opt_state, lr, weight_decay)
     

@@ -94,13 +94,26 @@ export function usePharmakon() {
             }
             if (data.text) {
               currentText += data.text;
-              const newToken = { char: data.text, alts: data.alts || [] };
+              const rawAlts = Array.isArray(data.alts) ? data.alts : [];
+              const alts: AltToken[] = rawAlts.map((alt: any) => ({
+                char: String(alt?.char ?? ""),
+                prob: typeof alt?.prob === "number" ? alt.prob : 0,
+              }));
+              const newToken: Token = { char: String(data.text), alts };
+
               setMessages((prev) => {
+                if (prev.length === 0) return prev;
                 const next = [...prev];
-                const lastMsg = { ...next[next.length - 1] };
-                lastMsg.content = currentText;
-                lastMsg.tokens = [...(lastMsg.tokens || []), newToken];
-                next[next.length - 1] = lastMsg;
+                const lastIndex = next.length - 1;
+                const targetMsg = next[lastIndex];
+                if (!targetMsg) return prev;
+
+                const lastMsg: Message = {
+                  ...targetMsg,
+                  content: currentText,
+                  tokens: [...(targetMsg.tokens || []), newToken],
+                };
+                next[lastIndex] = lastMsg;
                 return next;
               });
             }
@@ -109,15 +122,16 @@ export function usePharmakon() {
           }
         }
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setError(errMsg);
       setMessages((prev) => {
-        // If the model message is empty, remove it and add the error
-        let next = [...prev];
-        if (next[next.length - 1].role === "model" && next[next.length - 1].content === "") {
+        const next = [...prev];
+        const lastMsg = next[next.length - 1];
+        if (lastMsg && lastMsg.role === "model" && lastMsg.content === "") {
           next.pop();
         }
-        next.push({ role: "system", content: `[SYSTEM FAILURE]: ${err.message}` });
+        next.push({ role: "system", content: `[SYSTEM FAILURE]: ${errMsg}` });
         return next;
       });
     } finally {

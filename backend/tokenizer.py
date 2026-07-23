@@ -1,16 +1,13 @@
-"""
-Pharmakon Tokenizer Wrapper
-Wraps `tiktoken` for reliable tokenization with identity verification tests.
-"""
+from __future__ import annotations
 
+from typing import List, Sequence, Union, Tuple
 import tiktoken
-from typing import List
 
 class Tokenizer:
     def __init__(self, encoding_name: str = "gpt2"):
-        self.encoding_name = encoding_name
-        self.enc = tiktoken.get_encoding(encoding_name)
-        self.vocab_size = self.enc.n_vocab
+        self.encoding_name: str = encoding_name
+        self.enc: tiktoken.Encoding = tiktoken.get_encoding(encoding_name)
+        self.vocab_size: int = getattr(self.enc, "n_vocab", 50257)
 
     def encode(self, text: str) -> List[int]:
         assert isinstance(text, str), f"Expected input to be str, got {type(text)}"
@@ -18,9 +15,9 @@ class Tokenizer:
         assert isinstance(tokens, list), f"Expected returned tokens to be list, got {type(tokens)}"
         return tokens
 
-    def decode(self, tokens: List[int]) -> str:
+    def decode(self, tokens: Union[Sequence[int], List[int], Tuple[int, ...]]) -> str:
         assert isinstance(tokens, (list, tuple)), f"Expected tokens to be list or tuple, got {type(tokens)}"
-        text = self.enc.decode(tokens)
+        text = self.enc.decode(list(tokens))
         assert isinstance(text, str), f"Expected decoded output to be str, got {type(text)}"
         return text
 
